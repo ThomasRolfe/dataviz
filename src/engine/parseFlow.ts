@@ -1,0 +1,112 @@
+import type { FlowDefinition, Component, Connection } from '@/types/schema'
+
+function assertString(val: unknown, field: string): string {
+  if (typeof val !== 'string') throw new Error(`${field} must be a string`)
+  return val
+}
+
+function assertNumber(val: unknown, field: string): number {
+  if (typeof val !== 'number') throw new Error(`${field} must be a number`)
+  return val
+}
+
+function assertArray(val: unknown, field: string): unknown[] {
+  if (!Array.isArray(val)) throw new Error(`${field} must be an array`)
+  return val
+}
+
+function assertObject(val: unknown, field: string): Record<string, unknown> {
+  if (typeof val !== 'object' || val === null || Array.isArray(val))
+    throw new Error(`${field} must be an object`)
+  return val as Record<string, unknown>
+}
+
+const VALID_COMPONENT_TYPES = new Set(['client', 'service', 'database', 'queue', 'function', 'external'])
+const VALID_PACKET_SHAPES   = new Set(['sphere', 'document', 'token', 'blob', 'envelope'])
+const VALID_ANNOTATION_TYPES = new Set(['callout', 'transform'])
+
+export function validateFlow(raw: unknown): FlowDefinition {
+  const r = assertObject(raw, 'root')
+
+  const meta = assertObject(r['meta'], 'meta')
+  assertString(meta['title'], 'meta.title')
+
+  const layout = assertObject(r['layout'], 'layout')
+  const grid = assertObject(layout['grid'], 'layout.grid')
+  assertNumber(grid['cols'], 'layout.grid.cols')
+  assertNumber(grid['rows'], 'layout.grid.rows')
+
+  const zones = assertArray(r['zones'], 'zones')
+  for (const z of zones) {
+    const zone = assertObject(z, 'zone')
+    assertString(zone['id'], 'zone.id')
+    assertString(zone['label'], 'zone.label')
+    assertString(zone['color'], 'zone.color')
+    const bounds = assertObject(zone['bounds'], 'zone.bounds')
+    assertNumber(bounds['col'], 'zone.bounds.col')
+    assertNumber(bounds['row'], 'zone.bounds.row')
+    assertNumber(bounds['width'], 'zone.bounds.width')
+    assertNumber(bounds['height'], 'zone.bounds.height')
+  }
+
+  const components = assertArray(r['components'], 'components')
+  const componentIds = new Set<string>()
+  for (const c of components) {
+    const comp = assertObject(c, 'component')
+    const id = assertString(comp['id'], 'component.id')
+    assertString(comp['label'], 'component.label')
+    const type = assertString(comp['type'], 'component.type')
+    if (!VALID_COMPONENT_TYPES.has(type)) throw new Error(`Invalid component type: ${type}`)
+    const pos = assertObject(comp['position'], 'component.position')
+    assertNumber(pos['col'], 'component.position.col')
+    assertNumber(pos['row'], 'component.position.row')
+    componentIds.add(id)
+  }
+
+  const connections = assertArray(r['connections'], 'connections')
+  const connectionIds = new Set<string>()
+  for (const c of connections) {
+    const conn = assertObject(c, 'connection')
+    const id = assertString(conn['id'], 'connection.id')
+    const from = assertString(conn['from'], 'connection.from')
+    const to = assertString(conn['to'], 'connection.to')
+    if (!componentIds.has(from)) throw new Error(`connection.from references unknown component: ${from}`)
+    if (!componentIds.has(to)) throw new Error(`connection.to references unknown component: ${to}`)
+    connectionIds.add(id)
+  }
+
+  const steps = assertArray(r['steps'], 'steps')
+  for (const s of steps) {
+    const step = assertObject(s, 'step')
+    assertNumber(step['id'], 'step.id')
+    assertString(step['title'], 'step.title')
+    const highlight = assertArray(step['highlight'], 'step.highlight')
+    for (const h of highlight) assertString(h, 'step.highlight item')
+    const activeConns = assertArray(step['active_connections'], 'step.active_connections')
+    for (const a of activeConns) {
+      const connId = assertString(a, 'step.active_connections item')
+      if (!connectionIds.has(connId)) throw new Error(`step.active_connections references unknown connection: ${connId}`)
+    }
+    if (step['annotations'] !== undefined) {
+      const anns = assertArray(step['annotations'], 'step.annotations')
+      for (const a of anns) {
+        const ann = assertObject(a, 'annotation')
+        const annType = assertString(ann['type'], 'annotation.type')
+        if (!VALID_ANNOTATION_TYPES.has(annType)) throw new Error(`Invalid annotation type: ${annType}`)
+        assertString(ann['target'], 'annotation.target')
+        assertString(ann['text'], 'annotation.text')
+      }
+    }
+    if (step['packet'] !== null && step['packet'] !== undefined) {
+      const packet = assertObject(step['packet'], 'step.packet')
+      const connId = assertString(packet['connection'], 'packet.connection')
+      if (!connectionIds.has(connId)) throw new Error(`packet.connection references unknown connection: ${connId}`)
+      const shape = assertString(packet['shape'], 'packet.shape')
+      if (!VALID_PACKET_SHAPES.has(shape)) throw new Error(`Invalid packet shape: ${shape}`)
+    }
+  }
+
+  return raw as FlowDefinition
+}
+
+export type { Component, Connection }
