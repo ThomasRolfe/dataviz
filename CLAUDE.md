@@ -10,7 +10,7 @@ Full technical design: `flowviz-design.md`
 
 ## Current status
 
-**Phase 1 complete.** All scaffold, source files, and verification items done. Build passes cleanly. Ready to start Phase 2 (visualization).
+**Phase 2 complete.** Full visualization layer implemented and build passes cleanly.
 
 ---
 
@@ -83,19 +83,33 @@ flowviz/
       SceneManager.ts
       LightingSetup.ts
       OverlayBridge.ts
+      FlowScene.ts
+      GridFloor.ts
+      ZoneRenderer.ts
+      ComponentMesh.ts
+      ConnectionPipe.ts
+      DataPacket.ts
+      HoverSystem.ts
     components/
       CanvasContainer.tsx
       StepControls.tsx
       StepHUD.tsx
+      AnnotationOverlay.tsx
+      HoverTooltip.tsx
+      PopoutPanel.tsx
     hooks/
       useStepEngine.ts
       useAnimationFrame.ts
+      useHover.ts
     styles/
       global.css
       StepControls.module.css
       StepHUD.module.css
+      AnnotationOverlay.module.css
+      HoverTooltip.module.css
+      PopoutPanel.module.css
 ```
 
-## After Phase 1
+## After Phase 2
 
-Do not start Phase 2 until Phase 1 is fully working. Phase 2 (visualization) is defined in `flowviz-design.md` § 4.
+Phase 2 (visualization) is complete. Phase 3 (Claude Skill Integration) is defined in `flowviz-design.md` § 5.
