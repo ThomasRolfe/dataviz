@@ -6,6 +6,7 @@ import { AnnotationOverlay } from '@/components/AnnotationOverlay'
 import { PopoutPanel } from '@/components/PopoutPanel'
 import { HoverTooltip } from '@/components/HoverTooltip'
 import { ZoneLabels } from '@/components/ZoneLabels'
+import { PacketTooltip } from '@/components/PacketTooltip'
 import { buildGraph } from '@/engine/parseFlow'
 import { StepEngine } from '@/engine/stepEngine'
 import { useStepEngine } from '@/hooks/useStepEngine'
@@ -111,7 +112,13 @@ function App() {
           bridge={bridge}
         />
       )}
-      {hoveredId && bridge && (
+      {hoveredId === '__packet__' && sceneRef.current && bridge && (
+        <PacketTooltip
+          scene={sceneRef.current}
+          bridge={bridge}
+        />
+      )}
+      {hoveredId && hoveredId !== '__packet__' && bridge && (
         <HoverTooltip
           hoveredId={hoveredId}
           graph={graph}

@@ -40,7 +40,8 @@ function buildPacketMesh(shape: PacketShape): THREE.Mesh {
 }
 
 export class DataPacket {
-  mesh:        THREE.Mesh
+  mesh:         THREE.Mesh
+  arrived:      boolean = false
   private curve:     THREE.CatmullRomCurve3 | null = null
   private startTime: number = -1
   private duration:  number = 0
@@ -55,13 +56,15 @@ export class DataPacket {
     this.curve     = curve
     this.duration  = durationMs
     this.startTime = performance.now()
+    this.arrived   = false
     this.mesh.position.copy(curve.getPointAt(0))
     return new Promise(resolve => { this.onDone = resolve })
   }
 
-  // Called every frame from FlowScene.onFrame. Returns true when complete.
-  update(now: number): boolean {
-    if (!this.curve || this.startTime < 0) return false
+  // Called every frame from FlowScene.onFrame. No-op once arrived.
+  update(now: number): void {
+    if (!this.curve || this.startTime < 0 || this.arrived) return
+
     const elapsed = now - this.startTime
     const raw     = Math.min(elapsed / this.duration, 1)
     // Quadratic ease-in-out
@@ -70,7 +73,6 @@ export class DataPacket {
     const pos = this.curve.getPointAt(t)
     this.mesh.position.copy(pos)
 
-    // Orient along tangent
     const tangent = this.curve.getTangentAt(t)
     if (tangent.lengthSq() > 0) {
       this.mesh.quaternion.setFromUnitVectors(
@@ -80,10 +82,9 @@ export class DataPacket {
     }
 
     if (raw >= 1) {
+      this.arrived = true
       this.onDone?.()
-      return true
     }
-    return false
   }
 
   dispose(scene: THREE.Scene): void {

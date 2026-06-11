@@ -14,6 +14,8 @@ import type { InternalGraph } from '@/types/internal'
 import type { Step } from '@/types/schema'
 import { CELL_SIZE } from '@/engine/layoutEngine'
 
+const PACKET_TRAVEL_MS = 2000
+
 export class FlowScene extends SceneManager {
   private graph:          InternalGraph
   private components:     Map<string, ComponentMesh>
@@ -91,11 +93,11 @@ export class FlowScene extends SceneManager {
 
   applyStep(step: Step, _prevStep: Step | null, durationMs: number): void {
     const PHASE_MATERIAL = durationMs * 0.4
-    const PHASE_PACKET   = durationMs * 0.8
     const PHASE_CAMERA   = durationMs * 0.3
 
     // 1. Dispose active packet from previous step
     if (this.activePacket) {
+      this.hoverSystem.removeTarget(this.activePacket.mesh)
       this.activePacket.dispose(this.scene)
       this.activePacket = null
     }
@@ -123,9 +125,15 @@ export class FlowScene extends SceneManager {
     if (step.packet) {
       const pipe = this.pipes.get(step.packet.connection)
       if (pipe) {
+        const conn = this.graph.connections.get(step.packet.connection)
         const packet = new DataPacket(this.scene, step.packet.shape)
+        packet.mesh.userData.componentId  = '__packet__'
+        packet.mesh.userData.packetData   = step.packet.data
+        packet.mesh.userData.packetLabel  = conn?.label ?? step.packet.connection
+        packet.mesh.userData.packetShape  = step.packet.shape
+        this.hoverSystem.addTarget(packet.mesh)
         this.activePacket = packet
-        packet.travel(pipe.curve, Math.max(PHASE_PACKET, 100))
+        packet.travel(pipe.curve, PACKET_TRAVEL_MS)
       }
     }
   }
@@ -200,15 +208,13 @@ export class FlowScene extends SceneManager {
     }))
   }
 
+  getActivePacketMesh(): THREE.Mesh | null {
+    return this.activePacket?.mesh ?? null
+  }
+
   protected onFrame(_deltaMs: number): void {
     this.hoverSystem.update()
-    if (this.activePacket) {
-      const done = this.activePacket.update(performance.now())
-      if (done) {
-        this.activePacket.dispose(this.scene)
-        this.activePacket = null
-      }
-    }
+    this.activePacket?.update(performance.now())
   }
 
   dispose(): void {
@@ -219,6 +225,7 @@ export class FlowScene extends SceneManager {
     for (const cm of this.components.values()) cm.dispose(this.scene)
     for (const pipe of this.pipes.values()) pipe.dispose(this.scene)
     if (this.activePacket) {
+      this.hoverSystem.removeTarget(this.activePacket.mesh)
       this.activePacket.dispose(this.scene)
       this.activePacket = null
     }
