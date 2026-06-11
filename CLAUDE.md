@@ -8,6 +8,15 @@ Full technical design: `flowviz-design.md`
 
 ---
 
+## Git and PR workflow
+
+**Before pushing to any branch**, check whether its PR has already been merged into `main`:
+- Run `git fetch origin main && git log --oneline origin/main -5` to see recent merges
+- If the PR is merged, create a **new branch** off `main` (e.g. `git checkout -b fix/my-fix origin/main`), cherry-pick or re-apply the changes, push that branch, and open a new PR
+- Never push new commits to a branch whose PR is already merged — those commits won't reach `main` via a future merge and will be lost
+
+---
+
 ## Current status
 
 **Phase 2 complete.** Full visualization layer implemented and build passes cleanly.
