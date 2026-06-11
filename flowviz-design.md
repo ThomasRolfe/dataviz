@@ -191,6 +191,27 @@ interface Step {
 }
 ```
 
+#### Overview (rest) step
+
+Every flow definition should begin with a step that has empty `highlight`,
+`active_connections`, `annotations`, and no `packet`. This is the resting state — it
+shows the full architecture with all components at equal weight before any event has
+occurred. The step engine starts here on load. Example:
+
+```json
+{
+  "id": 0,
+  "title": "Telemetry Pipeline Overview",
+  "description": "The full pipeline from browser event to ClickHouse storage.",
+  "highlight": [],
+  "active_connections": [],
+  "camera": { "focus": null }
+}
+```
+
+Steps that follow this one describe specific events or transitions. The overview step
+has no annotations or packets so the viewer can orient themselves first.
+
 ### 2.8 `Annotation`
 
 ```typescript
@@ -203,13 +224,47 @@ interface Annotation {
 }
 ```
 
-`callout` — a speech-bubble style overlay. Used for general descriptive notes.
+`callout` — a speech-bubble style overlay. Used for describing an event, trigger, or
+action occurring at a component (e.g. a user interaction, an inbound request).
 
 `transform` — a code-style callout (monospace, darker background). Used when
-describing how a class or function transforms the data at this component.
+describing how a component transforms or processes data in-place (validation,
+enrichment, encryption, etc.).
 
-Both are HTML overlays positioned in screen space, anchored to the top of
-the target component's 3D bounding box.
+#### Rendering: leader-line callout cards
+
+Annotations are rendered as floating HTML cards connected to their target component
+by a thin SVG leader line. This keeps the text legible and spatially linked without
+overlapping the component mesh.
+
+**Card positioning** — Each card is placed at a fixed screen-space offset from the
+target component's projected screen position. The offset direction is assigned by
+annotation index to fan cards away from the component and avoid mutual overlap:
+
+| Index | Offset direction |
+|-------|-----------------|
+| 0     | upper-right (dx: +130px, dy: −90px) |
+| 1     | upper-left  (dx: −130px, dy: −90px) |
+| 2     | lower-right (dx: +130px, dy: +60px) |
+| 3     | lower-left  (dx: −130px, dy: +60px) |
+
+Additional annotations beyond index 3 cycle back through these directions with
+an additional vertical offset to prevent exact overlap.
+
+**Leader line** — A single `<line>` element inside a full-viewport `<svg>` overlay
+connects the component's projected screen position (its `topCenter`) to the near
+edge of the card. The SVG is positioned `position: absolute; inset: 0; pointer-events: none`
+so it sits above the canvas but does not capture mouse events.
+
+**Fade transition** — Cards and their leader lines fade in via a CSS `opacity`
+transition (200 ms ease-out) when a step with annotations becomes active, and fade
+out when the step changes. This is driven by adding/removing a CSS class rather than
+unmounting the component mid-transition.
+
+**Per-frame tracking** — Card positions and line endpoints are updated every frame
+via `useAnimationFrame` by re-projecting the target component's `topCenter` through
+`OverlayBridge.worldToScreen`. Direct DOM style mutations (not React state) are used
+to avoid flooding the React render cycle.
 
 ### 2.9 `Popout`
 
@@ -1376,58 +1431,83 @@ function HoverTooltip({
 
 ### 4.12 Annotations (`components/AnnotationOverlay.tsx`)
 
-Annotations for the current step are rendered as absolutely-positioned overlays
-anchored to their target component. They appear/disappear with a CSS fade.
+Annotations for the current step are rendered as leader-line callout cards. See § 2.8
+for the full design rationale. Each card floats at a screen-space offset from its
+target component with a thin SVG line connecting the two.
 
-```tsx
-function AnnotationOverlay({
-  annotations,
-  graph,
-  bridge,
-}: {
-  annotations: Annotation[]
-  graph:        InternalGraph
-  bridge:       OverlayBridge
-}) {
-  // Re-derive screen positions on every frame
-  const [positions, setPositions] = useState<Map<number, { x: number; y: number }>>(new Map())
+#### DOM structure
 
-  useAnimationFrame(() => {
-    const next = new Map<number, { x: number; y: number }>()
-    annotations.forEach((ann, i) => {
-      const component = graph.components.get(ann.target)
-      if (!component) return
-      // Anchor above the top face
-      const anchor = component.topCenter.clone()
-      anchor.y += 1.2
-      next.set(i, bridge.worldToScreen(anchor))
-    })
-    setPositions(next)
-  }, [annotations])
+Two elements are portalled into `#overlay-root`:
 
-  return ReactDOM.createPortal(
-    <>
-      {annotations.map((ann, i) => {
-        const p = positions.get(i)
-        if (!p) return null
-        return (
-          <div
-            key={i}
-            className={`${styles.annotation} ${styles[ann.type]}`}
-            style={{ transform: `translate(${p.x}px, ${p.y}px)` }}
-          >
-            {ann.text}
-          </div>
-        )
-      })}
-    </>,
-    document.getElementById('overlay-root')!
-  )
-}
+1. **SVG layer** — a `<svg>` element covering the full viewport (`position: absolute; inset: 0`).
+   Contains one `<line>` per annotation. `pointer-events: none`.
+2. **Card layer** — one `<div>` per annotation. `position: absolute; top: 0; left: 0`.
+   Positioned via `transform: translate(Xpx, Ypx)` updated per frame.
+
+#### Offset directions
+
+```typescript
+const OFFSETS = [
+  {  dx:  130, dy: -90 },   // index 0: upper-right
+  {  dx: -130, dy: -90 },   // index 1: upper-left
+  {  dx:  130, dy:  60 },   // index 2: lower-right
+  {  dx: -130, dy:  60 },   // index 3: lower-left
+]
 ```
 
-CSS for `.callout` uses a speech-bubble shape (border + `::after` arrow).
-CSS for `.transform` uses a monospace font, dark background, subtle left accent border.
+For annotation `i`, the card screen position is:
+```
+cardX = anchorScreen.x + OFFSETS[i % 4].dx
+cardY = anchorScreen.y + OFFSETS[i % 4].dy + Math.floor(i / 4) * 40
+```
+
+The leader line runs from `anchorScreen` (component `topCenter` projected to screen)
+to the nearest corner of the card.
+
+#### Per-frame updates (no React state)
+
+All position updates are direct DOM style mutations inside `useAnimationFrame`,
+identical to the pattern used by `ZoneLabels` and `HoverTooltip`:
+
+```typescript
+useAnimationFrame(() => {
+  annotations.forEach((ann, i) => {
+    const component = graph.components.get(ann.target)
+    if (!component) return
+    const anchor = bridge.worldToScreen(component.topCenter)
+
+    const { dx, dy } = OFFSETS[i % 4]
+    const extraY = Math.floor(i / 4) * 40
+    const cardX  = anchor.x + dx
+    const cardY  = anchor.y + dy + extraY
+
+    cardRefs.current[i]?.style.setProperty('transform', `translate(${cardX}px, ${cardY}px)`)
+    lineRefs.current[i]?.setAttribute('x1', String(anchor.x))
+    lineRefs.current[i]?.setAttribute('y1', String(anchor.y))
+    lineRefs.current[i]?.setAttribute('x2', String(cardX))
+    lineRefs.current[i]?.setAttribute('y2', String(cardY))
+  })
+}, [annotations, graph, bridge])
+```
+
+#### Fade transition
+
+Cards and lines carry a CSS class that controls `opacity`. On mount the class is
+absent (opacity 0). After the first frame it is added (opacity 1, transition 200 ms).
+On unmount the class is removed before the component is torn down, giving a 200 ms
+fade-out (achieved by delaying the unmount with a `useEffect` cleanup timeout).
+
+#### CSS
+
+`.callout` — rounded card, semi-transparent dark background, coloured left border
+matching the target component's type colour, regular weight text.
+
+`.transform` — same card shape, monospace font, slightly darker background, cyan
+left border. Visually signals "this is a code-level operation".
+
+`.leaderLine` — `stroke: rgba(255,255,255,0.25)`, `stroke-width: 1`, `stroke-dasharray: 4 4`.
+Dashed so it reads as a reference indicator rather than a data connection (which uses
+solid TubeGeometry pipes).
 
 ### 4.13 Popout panels (`components/PopoutPanel.tsx`)
 
