@@ -80,6 +80,14 @@
   ],
   "steps": [
     {
+      "id": 0,
+      "title": "Telemetry Pipeline Overview",
+      "description": "A button click in the browser travels through a collector API and Kafka topic before landing in ClickHouse.",
+      "highlight": [],
+      "active_connections": [],
+      "camera": { "focus": null }
+    },
+    {
       "id": 1,
       "title": "User action fires event",
       "description": "A button click triggers analytics.track() in the browser.",
