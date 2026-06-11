@@ -61,6 +61,7 @@ export class ComponentMesh {
     })
     this.mesh = new THREE.Mesh(geo, mat)
     this.mesh.position.copy(component.center)
+    this.mesh.position.y += component.meshSize.y / 2  // sit bottom face on ground
     this.mesh.castShadow    = true
     this.mesh.receiveShadow = true
     this.mesh.userData.componentId = component.id

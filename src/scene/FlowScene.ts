@@ -183,6 +183,26 @@ export class FlowScene extends SceneManager {
       .start()
   }
 
+  override resize(width: number, height: number): void {
+    const aspect = width / height || 1
+    this.camera.left   = -this.currentFrustum * aspect
+    this.camera.right  =  this.currentFrustum * aspect
+    this.camera.top    =  this.currentFrustum
+    this.camera.bottom = -this.currentFrustum
+    this.camera.position.set(this.cameraTarget.x + 50, 50, this.cameraTarget.z + 50)
+    this.camera.lookAt(this.cameraTarget)
+    this.camera.updateProjectionMatrix()
+    this.renderer.setSize(width, height, false)
+  }
+
+  getZoneLabelData(): Array<{ label: string; position: THREE.Vector3; color: string }> {
+    return this.graph.zones.map((zone, i) => ({
+      label:    zone.label,
+      position: this.zones[i].labelPosition,
+      color:    '#' + zone.color.getHexString(),
+    }))
+  }
+
   protected onFrame(_deltaMs: number): void {
     this.hoverSystem.update()
   }
