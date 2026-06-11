@@ -9,22 +9,22 @@ function buildPacketMesh(shape: PacketShape): THREE.Mesh {
 
   switch (shape) {
     case 'sphere':
-      geometry = new THREE.SphereGeometry(0.12, 16, 8)
+      geometry = new THREE.SphereGeometry(0.35, 16, 8)
       break
     case 'document':
-      geometry = new THREE.BoxGeometry(0.28, 0.03, 0.20)
+      geometry = new THREE.BoxGeometry(0.65, 0.12, 0.45)
       break
     case 'token':
-      geometry = new THREE.CylinderGeometry(0.10, 0.10, 0.025, 16)
+      geometry = new THREE.CylinderGeometry(0.28, 0.28, 0.09, 16)
       break
     case 'blob': {
-      const blobGeo = new THREE.SphereGeometry(0.14, 8, 6)
+      const blobGeo = new THREE.SphereGeometry(0.38, 8, 6)
       blobGeo.scale(1.0, 0.7, 0.9)
       geometry = blobGeo
       break
     }
     case 'envelope':
-      geometry = new THREE.BoxGeometry(0.22, 0.025, 0.16)
+      geometry = new THREE.BoxGeometry(0.60, 0.09, 0.42)
       break
   }
 
@@ -33,9 +33,9 @@ function buildPacketMesh(shape: PacketShape): THREE.Mesh {
     new THREE.MeshStandardMaterial({
       color:             PACKET_COLOR,
       emissive:          new THREE.Color(PACKET_COLOR),
-      emissiveIntensity: 0.6,
-      metalness:         0.3,
-      roughness:         0.2,
+      emissiveIntensity: 1.0,
+      metalness:         0.2,
+      roughness:         0.1,
     })
   )
 }
