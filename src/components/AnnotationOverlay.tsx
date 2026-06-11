@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef } from 'react'
 import ReactDOM from 'react-dom'
 import type { Annotation } from '@/types/schema'
 import type { InternalGraph } from '@/types/internal'
@@ -13,38 +13,39 @@ interface AnnotationOverlayProps {
 }
 
 export function AnnotationOverlay({ annotations, graph, bridge }: AnnotationOverlayProps) {
-  const [positions, setPositions] = useState<Map<number, { x: number; y: number }>>(new Map())
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   useAnimationFrame(() => {
-    const next = new Map<number, { x: number; y: number }>()
     annotations.forEach((ann, i) => {
+      const el = itemRefs.current.get(i)
+      if (!el) return
       const component = graph.components.get(ann.target)
       if (!component) return
       const anchor = component.topCenter.clone()
-      anchor.y += 1.2
-      next.set(i, bridge.worldToScreen(anchor))
+      anchor.y += 0.5
+      const pos = bridge.worldToScreen(anchor)
+      el.style.transform = `translate(calc(${pos.x}px - 50%), ${pos.y}px)`
     })
-    setPositions(next)
-  }, [annotations])
+  }, [annotations, graph, bridge])
 
   const overlayRoot = document.getElementById('overlay-root')
   if (!overlayRoot) return null
 
   return ReactDOM.createPortal(
     <>
-      {annotations.map((ann, i) => {
-        const p = positions.get(i)
-        if (!p) return null
-        return (
-          <div
-            key={i}
-            className={`${styles.annotation} ${styles[ann.type]}`}
-            style={{ transform: `translate(${p.x - 110}px, ${p.y}px)` }}
-          >
-            {ann.text}
-          </div>
-        )
-      })}
+      {annotations.map((ann, i) => (
+        <div
+          key={i}
+          ref={el => {
+            if (el) itemRefs.current.set(i, el)
+            else itemRefs.current.delete(i)
+          }}
+          className={`${styles.annotation} ${styles[ann.type]}`}
+          style={{ transform: 'translate(-9999px, -9999px)' }}
+        >
+          {ann.text}
+        </div>
+      ))}
     </>,
     overlayRoot
   )

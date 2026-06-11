@@ -5,6 +5,7 @@ import { StepHUD } from '@/components/StepHUD'
 import { AnnotationOverlay } from '@/components/AnnotationOverlay'
 import { PopoutPanel } from '@/components/PopoutPanel'
 import { HoverTooltip } from '@/components/HoverTooltip'
+import { ZoneLabels } from '@/components/ZoneLabels'
 import { buildGraph } from '@/engine/parseFlow'
 import { StepEngine } from '@/engine/stepEngine'
 import { useStepEngine } from '@/hooks/useStepEngine'
@@ -13,37 +14,43 @@ import type { FlowScene } from '@/scene/FlowScene'
 import type { OverlayBridge } from '@/scene/OverlayBridge'
 import type { InternalGraph } from '@/types/internal'
 import type { FlowDefinition } from '@/types/schema'
+import type { Vector3 } from 'three'
 import styles from '@/styles/App.module.css'
 import '@/styles/global.css'
 
 async function loadFlow(name: string): Promise<FlowDefinition> {
   const res = await fetch(`/flows/${name}.json`)
   if (!res.ok) throw new Error(`Failed to load flow: ${res.status}`)
-  const raw = await res.json()
-  // validateFlow is called inside buildGraph
-  return raw as FlowDefinition
+  return res.json() as Promise<FlowDefinition>
 }
 
 function App() {
-  const [graph, setGraph]           = useState<InternalGraph | null>(null)
-  const [engine, setEngine]         = useState<StepEngine | null>(null)
-  const [error, setError]           = useState<string | null>(null)
+  const [graph, setGraph]   = useState<InternalGraph | null>(null)
+  const [engine, setEngine] = useState<StepEngine | null>(null)
+  const [error, setError]   = useState<string | null>(null)
+  const [bridge, setBridge] = useState<OverlayBridge | null>(null)
+  const [zoneLabelData, setZoneLabelData] = useState<
+    Array<{ label: string; position: Vector3; color: string }>
+  >([])
+
   const stepState                   = useStepEngine(engine)
   const { hoveredId, setHoveredId } = useHover()
   const sceneRef                    = useRef<FlowScene | null>(null)
-  const bridgeRef                   = useRef<OverlayBridge | null>(null)
+  const engineRef                   = useRef<StepEngine | null>(null)
 
   useEffect(() => {
     loadFlow('example')
       .then(def => {
         const g = buildGraph(def)
         setGraph(g)
-        setEngine(new StepEngine(def.steps))
+        const eng = new StepEngine(def.steps)
+        engineRef.current = eng
+        setEngine(eng)
       })
       .catch(err => setError(String(err)))
   }, [])
 
-  // Wire step engine to scene
+  // Wire step engine to scene on each step change
   useEffect(() => {
     if (!engine) return
     return engine.subscribe(state => {
@@ -62,7 +69,7 @@ function App() {
   if (!graph) {
     return (
       <div style={{ color: '#e0e0e0', padding: '2rem', fontFamily: 'monospace' }}>
-        Loading...
+        Loading…
       </div>
     )
   }
@@ -71,41 +78,47 @@ function App() {
     <div className={styles.app}>
       <CanvasContainer
         graph={graph}
-        onSceneReady={(scene, bridge) => {
-          sceneRef.current  = scene
-          bridgeRef.current = bridge
+        onSceneReady={(scene, b) => {
+          sceneRef.current = scene
+          setBridge(b)
           scene.setHoverCallback(setHoveredId)
-          // Apply step 0 immediately with no animation
-          if (stepState) {
-            scene.applyStep(stepState.step, null, 0)
+          setZoneLabelData(scene.getZoneLabelData())
+          // Use engineRef (always current) since stepState may lag one render cycle
+          const eng = engineRef.current
+          if (eng) {
+            scene.applyStep(eng.getState().step, null, 0)
           }
         }}
       />
 
-      {/* Overlays */}
-      {stepState?.step.annotations && stepState.step.annotations.length > 0 && bridgeRef.current && (
+      {/* Persistent zone labels */}
+      {bridge && zoneLabelData.length > 0 && (
+        <ZoneLabels zones={zoneLabelData} bridge={bridge} />
+      )}
+
+      {/* Per-step overlays */}
+      {stepState?.step.annotations && stepState.step.annotations.length > 0 && bridge && (
         <AnnotationOverlay
           annotations={stepState.step.annotations}
           graph={graph}
-          bridge={bridgeRef.current}
+          bridge={bridge}
         />
       )}
-      {stepState?.step.popouts && stepState.step.popouts.length > 0 && bridgeRef.current && (
+      {stepState?.step.popouts && stepState.step.popouts.length > 0 && bridge && (
         <PopoutPanel
           popouts={stepState.step.popouts}
           graph={graph}
-          bridge={bridgeRef.current}
+          bridge={bridge}
         />
       )}
-      {hoveredId && bridgeRef.current && (
+      {hoveredId && bridge && (
         <HoverTooltip
           hoveredId={hoveredId}
           graph={graph}
-          bridge={bridgeRef.current}
+          bridge={bridge}
         />
       )}
 
-      {/* UI chrome */}
       {engine && stepState && (
         <>
           <StepHUD engine={engine} />

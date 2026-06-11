@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef } from 'react'
 import ReactDOM from 'react-dom'
 import type { InternalGraph } from '@/types/internal'
 import type { OverlayBridge } from '@/scene/OverlayBridge'
@@ -12,14 +12,15 @@ interface HoverTooltipProps {
 }
 
 export function HoverTooltip({ hoveredId, graph, bridge }: HoverTooltipProps) {
-  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const divRef = useRef<HTMLDivElement | null>(null)
 
   useAnimationFrame(() => {
-    if (!hoveredId) return
+    if (!divRef.current || !hoveredId) return
     const component = graph.components.get(hoveredId)
     if (!component) return
-    setPos(bridge.worldToScreen(component.topCenter))
-  }, [hoveredId])
+    const pos = bridge.worldToScreen(component.topCenter)
+    divRef.current.style.transform = `translate(calc(${pos.x}px - 50%), calc(${pos.y}px - 100% - 12px))`
+  }, [hoveredId, graph, bridge])
 
   if (!hoveredId) return null
   const component = graph.components.get(hoveredId)
@@ -31,8 +32,9 @@ export function HoverTooltip({ hoveredId, graph, bridge }: HoverTooltipProps) {
 
   return ReactDOM.createPortal(
     <div
+      ref={divRef}
       className={styles.tooltip}
-      style={{ transform: `translate(${pos.x}px, ${pos.y - 20}px)` }}
+      style={{ transform: 'translate(-9999px, -9999px)' }}
     >
       <strong>{component.label}</strong>
       {meta?.description && <p>{meta.description}</p>}

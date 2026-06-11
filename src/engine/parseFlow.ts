@@ -149,7 +149,7 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
     const center    = componentCenter(c)
     const meshSize  = componentMeshSize(c)
     const topCenter = center.clone()
-    topCenter.y += meshSize.y / 2
+    topCenter.y += meshSize.y  // mesh bottom sits on ground; top = full height above ground
 
     const ic: InternalComponent = {
       id:        c.id,
