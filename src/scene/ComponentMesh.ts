@@ -83,6 +83,7 @@ export class ComponentMesh {
       })
     )
     this.edgeMesh.visible = false
+    this.edgeMesh.userData.componentId = component.id
     this.mesh.add(this.edgeMesh)
   }
 

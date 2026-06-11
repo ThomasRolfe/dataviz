@@ -36,7 +36,8 @@ export class HoverSystem {
   update(): void {
     if (!this.hasPointer) return
     this.raycaster.setFromCamera(this.pointer, this.camera)
-    const intersects = this.raycaster.intersectObjects(this.targets)
+    // recursive=false: don't test child objects (e.g. edge outline meshes)
+    const intersects = this.raycaster.intersectObjects(this.targets, false)
 
     // Packet takes priority: if the ray hits both a component and the active
     // packet, prefer the packet regardless of depth order.

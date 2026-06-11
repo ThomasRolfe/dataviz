@@ -85,7 +85,24 @@ export class FlowScene extends SceneManager {
     this.camera.bottom = -frustumNeeded
     this.camera.updateProjectionMatrix()
 
+    canvas.addEventListener('wheel', this.onWheel, { passive: false })
     this.startLoop()
+  }
+
+  private onWheel = (e: WheelEvent): void => {
+    e.preventDefault()
+    const factor = e.deltaY > 0 ? 1.12 : 0.89
+    const next = Math.min(
+      Math.max(this.currentFrustum * factor, this.overviewFrustum * 0.25),
+      this.overviewFrustum * 2.5
+    )
+    this.currentFrustum = next
+    const aspect = this.renderer.domElement.clientWidth / this.renderer.domElement.clientHeight || 1
+    this.camera.left   = -next * aspect
+    this.camera.right  =  next * aspect
+    this.camera.top    =  next
+    this.camera.bottom = -next
+    this.camera.updateProjectionMatrix()
   }
 
   setHoverCallback(fn: (id: string | null) => void): void {
@@ -262,6 +279,7 @@ export class FlowScene extends SceneManager {
   }
 
   dispose(): void {
+    this.renderer.domElement.removeEventListener('wheel', this.onWheel)
     this.stopLoop()
     this.hoverSystem.dispose()
     this.grid.dispose(this.scene)
