@@ -23,7 +23,7 @@ export function ZoneLabels({ zones, bridge }: ZoneLabelsProps) {
       const el = itemRefs.current.get(i)
       if (!el) return
       const pos = bridge.worldToScreen(zone.position)
-      el.style.transform = `translate(${pos.x}px, ${pos.y}px) rotate(-30deg)`
+      el.style.transform = `translate(${pos.x}px, ${pos.y}px) rotate(30deg)`
     })
   }, [zones, bridge])
 

@@ -38,8 +38,8 @@ export class ZoneRenderer {
     this.borderMesh.position.y += 0.01
     scene.add(this.borderMesh)
 
-    // Label anchor: top-left corner of the zone, slightly elevated
-    this.labelPosition = new THREE.Vector3(zone.min.x, 0.2, zone.min.z)
+    // Label anchor: just inside the top corner of the zone
+    this.labelPosition = new THREE.Vector3(zone.min.x + 0.6, 0.2, zone.min.z + 0.6)
   }
 
   dispose(scene: THREE.Scene): void {

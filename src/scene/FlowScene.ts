@@ -123,12 +123,9 @@ export class FlowScene extends SceneManager {
     if (step.packet) {
       const pipe = this.pipes.get(step.packet.connection)
       if (pipe) {
-        const packetDef = step.packet
-        setTimeout(() => {
-          const packet = new DataPacket(this.scene, packetDef.shape)
-          this.activePacket = packet
-          packet.travel(pipe.curve, PHASE_PACKET)
-        }, PHASE_MATERIAL * 0.5)
+        const packet = new DataPacket(this.scene, step.packet.shape)
+        this.activePacket = packet
+        packet.travel(pipe.curve, Math.max(PHASE_PACKET, 100))
       }
     }
   }
@@ -205,6 +202,13 @@ export class FlowScene extends SceneManager {
 
   protected onFrame(_deltaMs: number): void {
     this.hoverSystem.update()
+    if (this.activePacket) {
+      const done = this.activePacket.update(performance.now())
+      if (done) {
+        this.activePacket.dispose(this.scene)
+        this.activePacket = null
+      }
+    }
   }
 
   dispose(): void {
