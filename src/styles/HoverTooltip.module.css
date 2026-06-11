@@ -1,0 +1,44 @@
+.tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  max-width: 260px;
+  background: rgba(10, 10, 30, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  backdrop-filter: blur(8px);
+  color: #e0e0e0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  z-index: 200;
+}
+
+.tooltip strong {
+  display: block;
+  font-size: 0.85rem;
+  color: #ffffff;
+  margin-bottom: 0.3rem;
+}
+
+.tooltip p {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.3rem;
+}
+
+.tooltip code {
+  display: block;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.75rem;
+  color: #00ffcc;
+  margin-bottom: 0.3rem;
+  background: rgba(0, 255, 204, 0.08);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.3rem;
+}
+
+.notes {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}

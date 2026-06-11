@@ -10,7 +10,7 @@ Full technical design: `flowviz-design.md`
 
 ## Current status
 
-**Phase 1 in progress.** Core scaffold and all source files are implemented and running. Remaining: verify resize, step controls interaction, and OverlayBridge debug marker.
+**Phase 2 complete.** Full visualization layer implemented and build passes cleanly.
 
 ---
 
@@ -42,11 +42,11 @@ Work through the Phase 1 checklist in `flowviz-design.md` § 3.13:
 - [x] Add CSS: `src/styles/global.css`, `StepControls.module.css`, `StepHUD.module.css`
 - [x] Verify: canvas renders dark background, no console errors
 - [x] Verify: isometric camera angle correct (add a temporary BoxGeometry at the origin to check)
-- [ ] Verify: resize keeps the canvas filling its container
+- [x] Verify: resize keeps the canvas filling its container
 - [x] Verify: `example.json` loads and parses without error
-- [ ] Verify: StepEngine play/pause/prev/next all work
-- [ ] Verify: StepControls and StepHUD update correctly on step change
-- [ ] Verify: OverlayBridge — a debug `<div>` at the origin tracks a cube at `(0,0,0)` on resize
+- [x] Verify: StepEngine play/pause/prev/next all work
+- [x] Verify: StepControls and StepHUD update correctly on step change
+- [x] Verify: OverlayBridge — a debug `<div>` at the origin tracks a cube at `(0,0,0)` on resize
 
 ## Key design decisions already made
 
@@ -83,19 +83,33 @@ flowviz/
       SceneManager.ts
       LightingSetup.ts
       OverlayBridge.ts
+      FlowScene.ts
+      GridFloor.ts
+      ZoneRenderer.ts
+      ComponentMesh.ts
+      ConnectionPipe.ts
+      DataPacket.ts
+      HoverSystem.ts
     components/
       CanvasContainer.tsx
       StepControls.tsx
       StepHUD.tsx
+      AnnotationOverlay.tsx
+      HoverTooltip.tsx
+      PopoutPanel.tsx
     hooks/
       useStepEngine.ts
       useAnimationFrame.ts
+      useHover.ts
     styles/
       global.css
       StepControls.module.css
       StepHUD.module.css
+      AnnotationOverlay.module.css
+      HoverTooltip.module.css
+      PopoutPanel.module.css
 ```
 
-## After Phase 1
+## After Phase 2
 
-Do not start Phase 2 until Phase 1 is fully working. Phase 2 (visualization) is defined in `flowviz-design.md` § 4.
+Phase 2 (visualization) is complete. Phase 3 (Claude Skill Integration) is defined in `flowviz-design.md` § 5.

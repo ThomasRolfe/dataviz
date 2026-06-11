@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 
 export function useAnimationFrame(callback: () => void, deps: unknown[]): void {
   const savedCallback = useRef(callback)
-  const rafRef        = useRef<number>()
+  const rafRef        = useRef<number | undefined>(undefined)
 
   useEffect(() => { savedCallback.current = callback }, [callback])
 
