@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { CanvasContainer } from '@/components/CanvasContainer'
 import { StepControls } from '@/components/StepControls'
 import { StepHUD } from '@/components/StepHUD'
-import { AnnotationOverlay } from '@/components/AnnotationOverlay'
-import { PopoutPanel } from '@/components/PopoutPanel'
 import { HoverTooltip } from '@/components/HoverTooltip'
 import { ZoneLabels } from '@/components/ZoneLabels'
 import { PacketTooltip } from '@/components/PacketTooltip'
@@ -97,21 +95,7 @@ function App() {
         <ZoneLabels zones={zoneLabelData} bridge={bridge} />
       )}
 
-      {/* Per-step overlays */}
-      {stepState?.step.annotations && stepState.step.annotations.length > 0 && bridge && (
-        <AnnotationOverlay
-          annotations={stepState.step.annotations}
-          graph={graph}
-          bridge={bridge}
-        />
-      )}
-      {stepState?.step.popouts && stepState.step.popouts.length > 0 && bridge && (
-        <PopoutPanel
-          popouts={stepState.step.popouts}
-          graph={graph}
-          bridge={bridge}
-        />
-      )}
+
       {hoveredId === '__packet__' && sceneRef.current && bridge && (
         <PacketTooltip
           scene={sceneRef.current}
