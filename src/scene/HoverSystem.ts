@@ -38,7 +38,12 @@ export class HoverSystem {
     this.raycaster.setFromCamera(this.pointer, this.camera)
     const intersects = this.raycaster.intersectObjects(this.targets)
 
-    const hit = intersects.length > 0 ? intersects[0].object : null
+    // Packet takes priority: if the ray hits both a component and the active
+    // packet, prefer the packet regardless of depth order.
+    const packetHit = intersects.find(i => i.object.userData.componentId === '__packet__')
+    const hit = packetHit
+      ? packetHit.object
+      : intersects.length > 0 ? intersects[0].object : null
     const hoveredId = (hit?.userData?.componentId as string | undefined) ?? null
 
     if (hoveredId !== this.lastHoveredId) {
