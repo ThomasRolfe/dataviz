@@ -1,0 +1,101 @@
+# FlowViz — Project Instructions for Claude Code
+
+## What this project is
+
+A web app that renders animated isometric data flow diagrams from a JSON definition file.
+Full product requirements: `flowviz-requirements.md`
+Full technical design: `flowviz-design.md`
+
+---
+
+## Current status
+
+**Phase 1 in progress.** Core scaffold and all source files are implemented and running. Remaining: verify resize, step controls interaction, and OverlayBridge debug marker.
+
+---
+
+## Your task: implement Phase 1
+
+Phase 1 produces a running skeleton with no visualization content.
+Everything is defined in `flowviz-design.md` § 3 (pages/sections 3.1–3.13).
+
+Work through the Phase 1 checklist in `flowviz-design.md` § 3.13:
+
+- [x] Scaffold the project with `npm create vite@latest flowviz -- --template react-ts` inside this folder
+- [x] Install dependencies: `three`, `@tweenjs/tween.js`, `@types/three`
+- [x] Apply `vite.config.ts` from § 3.2
+- [x] Apply `tsconfig.json` settings from § 3.3 (strict mode, `moduleResolution: bundler`, `@/` alias, `target: ES2022`)
+- [x] Implement `src/types/schema.ts` — all TypeScript types from § 2 of the design doc
+- [x] Implement `src/scene/SceneManager.ts` — Three.js renderer, orthographic camera, animation loop (§ 3.4)
+- [x] Implement `src/scene/LightingSetup.ts` — ambient + key + fill lights (§ 3.5)
+- [x] Implement `src/scene/OverlayBridge.ts` — world → screen coordinate projection (§ 3.12)
+- [x] Implement `src/engine/stepEngine.ts` — pure TS step state machine (§ 3.7)
+- [x] Implement `src/hooks/useStepEngine.ts` — React hook wrapping StepEngine (§ 3.8)
+- [x] Implement `src/hooks/useAnimationFrame.ts` — rAF subscription hook (§ 4.14)
+- [x] Implement `src/engine/parseFlow.ts` — JSON → validated FlowDefinition (§ 3.11)
+- [x] Implement `src/engine/layoutEngine.ts` — grid coords → world coords stubs (§ 4.1, just the constants and functions — no scene objects yet)
+- [x] Implement `src/components/CanvasContainer.tsx` — mounts SceneManager, ResizeObserver (§ 3.6)
+- [x] Implement `src/components/StepControls.tsx` — back / play-pause / forward (§ 3.9)
+- [x] Implement `src/components/StepHUD.tsx` — title, description, step counter (§ 3.10)
+- [x] Implement `src/App.tsx` — loads flow JSON, wires engine, renders layout
+- [x] Create `public/flows/example.json` — the sample flow from § 5 of the design doc
+- [x] Add CSS: `src/styles/global.css`, `StepControls.module.css`, `StepHUD.module.css`
+- [x] Verify: canvas renders dark background, no console errors
+- [x] Verify: isometric camera angle correct (add a temporary BoxGeometry at the origin to check)
+- [ ] Verify: resize keeps the canvas filling its container
+- [x] Verify: `example.json` loads and parses without error
+- [ ] Verify: StepEngine play/pause/prev/next all work
+- [ ] Verify: StepControls and StepHUD update correctly on step change
+- [ ] Verify: OverlayBridge — a debug `<div>` at the origin tracks a cube at `(0,0,0)` on resize
+
+## Key design decisions already made
+
+- **No backend.** Static site, served by Vite dev server in development.
+- **No component library, no CSS framework.** Plain CSS modules only.
+- **SceneManager is a plain TS class**, not a React component. React owns its lifecycle via `CanvasContainer`.
+- **StepEngine is pure TS** (no React, no Three.js). React subscribes via `useStepEngine`.
+- **`@/` alias** maps to `/src`. Use it for all internal imports.
+- **TWEEN.update()** must be called every frame in the animation loop with no arguments.
+- **Packet shapes and component types** are defined in § 2 and § 4 of the design doc — don't invent alternatives.
+
+## File layout (from § 3.1)
+
+```
+flowviz/
+  index.html
+  vite.config.ts
+  tsconfig.json
+  package.json
+  public/
+    flows/
+      example.json
+  src/
+    main.tsx
+    App.tsx
+    types/
+      schema.ts
+      internal.ts
+    engine/
+      parseFlow.ts
+      layoutEngine.ts
+      stepEngine.ts
+    scene/
+      SceneManager.ts
+      LightingSetup.ts
+      OverlayBridge.ts
+    components/
+      CanvasContainer.tsx
+      StepControls.tsx
+      StepHUD.tsx
+    hooks/
+      useStepEngine.ts
+      useAnimationFrame.ts
+    styles/
+      global.css
+      StepControls.module.css
+      StepHUD.module.css
+```
+
+## After Phase 1
+
+Do not start Phase 2 until Phase 1 is fully working. Phase 2 (visualization) is defined in `flowviz-design.md` § 4.
