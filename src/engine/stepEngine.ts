@@ -10,15 +10,15 @@ export interface StepState {
 }
 
 export class StepEngine {
-  private steps:         Step[]
+  private steps:          Step[]
   private playIntervalMs: number
-  private index:         number = 0
-  private playing:       boolean = false
-  private timer:         ReturnType<typeof setTimeout> | null = null
-  private listeners:     Set<StepEngineListener> = new Set()
+  private index:          number = 0
+  private playing:        boolean = false
+  private timer:          ReturnType<typeof setTimeout> | null = null
+  private listeners:      Set<StepEngineListener> = new Set()
 
   constructor(steps: Step[], playIntervalMs: number = 3000) {
-    this.steps = steps
+    this.steps          = steps
     this.playIntervalMs = playIntervalMs
   }
 

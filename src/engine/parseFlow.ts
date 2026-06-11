@@ -1,4 +1,9 @@
+import * as THREE from 'three'
 import type { FlowDefinition, Component, Connection } from '@/types/schema'
+import type { InternalGraph, InternalComponent, InternalConnection, InternalZone } from '@/types/internal'
+import { componentCenter, componentMeshSize, gridToWorld, CELL_SIZE } from '@/engine/layoutEngine'
+
+export const PIPE_HEIGHT = 0.5
 
 function assertString(val: unknown, field: string): string {
   if (typeof val !== 'string') throw new Error(`${field} must be a string`)
@@ -107,6 +112,114 @@ export function validateFlow(raw: unknown): FlowDefinition {
   }
 
   return raw as FlowDefinition
+}
+
+function autoRoute(from: InternalComponent, to: InternalComponent): THREE.CatmullRomCurve3 {
+  const start = from.center.clone().setY(PIPE_HEIGHT)
+  const end   = to.center.clone().setY(PIPE_HEIGHT)
+  const mid   = new THREE.Vector3(end.x, PIPE_HEIGHT, start.z)
+  return new THREE.CatmullRomCurve3([start, mid, end])
+}
+
+function bakeRoute(
+  from: InternalComponent,
+  to: InternalComponent,
+  connection: Connection,
+): THREE.CatmullRomCurve3 {
+  if (connection.route === 'auto') {
+    return autoRoute(from, to)
+  } else {
+    const waypoints = connection.route.map(wp =>
+      gridToWorld(wp.col, wp.row, 0).setY(PIPE_HEIGHT)
+    )
+    return new THREE.CatmullRomCurve3([
+      from.center.clone().setY(PIPE_HEIGHT),
+      ...waypoints,
+      to.center.clone().setY(PIPE_HEIGHT),
+    ])
+  }
+}
+
+export function buildGraph(def: FlowDefinition): InternalGraph {
+  validateFlow(def)
+
+  // Build InternalComponent map
+  const components = new Map<string, InternalComponent>()
+  for (const c of def.components) {
+    const center    = componentCenter(c)
+    const meshSize  = componentMeshSize(c)
+    const topCenter = center.clone()
+    topCenter.y += meshSize.y / 2
+
+    const ic: InternalComponent = {
+      id:        c.id,
+      label:     c.label,
+      type:      c.type,
+      center,
+      meshSize,
+      topCenter,
+      meta:      c.meta,
+    }
+    components.set(c.id, ic)
+  }
+
+  // Build InternalConnection map
+  const connections = new Map<string, InternalConnection>()
+  for (const conn of def.connections) {
+    const from = components.get(conn.from)!
+    const to   = components.get(conn.to)!
+    const curve = bakeRoute(from, to, conn)
+    const tubePoints = curve.getPoints(64)
+
+    const ic: InternalConnection = {
+      id:    conn.id,
+      from,
+      to,
+      label: conn.label,
+      curve,
+      tubePoints,
+    }
+    connections.set(conn.id, ic)
+  }
+
+  // Build InternalZone array
+  const zones: InternalZone[] = def.zones.map(z => {
+    const min = new THREE.Vector3(
+      z.bounds.col * CELL_SIZE,
+      0,
+      z.bounds.row * CELL_SIZE
+    )
+    const max = new THREE.Vector3(
+      (z.bounds.col + z.bounds.width)  * CELL_SIZE,
+      0,
+      (z.bounds.row + z.bounds.height) * CELL_SIZE
+    )
+    return {
+      id:    z.id,
+      label: z.label,
+      color: new THREE.Color(z.color),
+      min,
+      max,
+    }
+  })
+
+  // Compute gridBounds
+  const cols = def.layout.grid.cols
+  const rows = def.layout.grid.rows
+  const gridBounds = {
+    minX: 0,
+    maxX: cols * CELL_SIZE,
+    minZ: 0,
+    maxZ: rows * CELL_SIZE,
+  }
+
+  return {
+    components,
+    connections,
+    zones,
+    steps: def.steps,
+    gridBounds,
+  }
 }
 
 export type { Component, Connection }

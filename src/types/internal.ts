@@ -7,6 +7,7 @@ export interface InternalComponent {
   type: ComponentType
   center: THREE.Vector3
   meshSize: THREE.Vector3
+  topCenter: THREE.Vector3
   meta: {
     description?: string
     file?: string
