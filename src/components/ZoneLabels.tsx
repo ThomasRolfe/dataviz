@@ -23,7 +23,7 @@ export function ZoneLabels({ zones, bridge }: ZoneLabelsProps) {
       const el = itemRefs.current.get(i)
       if (!el) return
       const pos = bridge.worldToScreen(zone.position)
-      el.style.transform = `translate(${pos.x}px, ${pos.y}px)`
+      el.style.transform = `translate(${pos.x}px, ${pos.y}px) rotate(-30deg)`
     })
   }, [zones, bridge])
 
@@ -43,8 +43,9 @@ export function ZoneLabels({ zones, bridge }: ZoneLabelsProps) {
             position:      'absolute',
             top:           0,
             left:          0,
-            transform:     'translate(-9999px, -9999px)',
-            color:         zone.color,
+            transform:        'translate(-9999px, -9999px)',
+            transformOrigin:  '0 0',
+            color:            zone.color,
             fontSize:      '0.68rem',
             fontWeight:    700,
             letterSpacing: '0.1em',

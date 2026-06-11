@@ -8,6 +8,7 @@ export class HoverSystem {
   private canvas:        HTMLCanvasElement
   private onHoverChange: (id: string | null) => void
   private lastHoveredId: string | null = null
+  private hasPointer:    boolean = false
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -26,12 +27,14 @@ export class HoverSystem {
   }
 
   private onMouseMove(event: MouseEvent): void {
+    this.hasPointer = true
     const rect = this.canvas.getBoundingClientRect()
     this.pointer.x =  ((event.clientX - rect.left) / rect.width)  * 2 - 1
     this.pointer.y = -((event.clientY - rect.top)  / rect.height) * 2 + 1
   }
 
   update(): void {
+    if (!this.hasPointer) return
     this.raycaster.setFromCamera(this.pointer, this.camera)
     const intersects = this.raycaster.intersectObjects(this.targets)
 
