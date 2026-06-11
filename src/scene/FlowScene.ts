@@ -22,8 +22,9 @@ export class FlowScene extends SceneManager {
   private pipes:          Map<string, ConnectionPipe>
   private zones:          ZoneRenderer[]
   private grid:           GridFloor
-  private activePacket:   DataPacket | null = null
-  private hoverSystem:    HoverSystem
+  private activePacket:    DataPacket | null = null
+  private penetratedIds:  Set<string> = new Set()
+  private hoverSystem:     HoverSystem
   private overviewTarget: THREE.Vector3
   private overviewFrustum: number
   cameraTarget:   THREE.Vector3
@@ -95,12 +96,16 @@ export class FlowScene extends SceneManager {
     const PHASE_MATERIAL = durationMs * 0.4
     const PHASE_CAMERA   = durationMs * 0.3
 
-    // 1. Dispose active packet from previous step
+    // 1. Dispose active packet and clear any penetration state from previous step
     if (this.activePacket) {
       this.hoverSystem.removeTarget(this.activePacket.mesh)
       this.activePacket.dispose(this.scene)
       this.activePacket = null
     }
+    for (const id of this.penetratedIds) {
+      this.components.get(id)?.setPenetrated(false)
+    }
+    this.penetratedIds.clear()
 
     // 2. Transition component materials
     for (const [id, mesh] of this.components) {
@@ -215,6 +220,45 @@ export class FlowScene extends SceneManager {
   protected onFrame(_deltaMs: number): void {
     this.hoverSystem.update()
     this.activePacket?.update(performance.now())
+    this.updatePenetration()
+  }
+
+  private updatePenetration(): void {
+    if (!this.activePacket) {
+      if (this.penetratedIds.size > 0) {
+        for (const id of this.penetratedIds) {
+          this.components.get(id)?.setPenetrated(false)
+        }
+        this.penetratedIds.clear()
+      }
+      return
+    }
+
+    const p = this.activePacket.mesh.position
+    const next = new Set<string>()
+
+    for (const [id] of this.components) {
+      const ic = this.graph.components.get(id)
+      if (!ic) continue
+      const hx = ic.meshSize.x / 2
+      const hz = ic.meshSize.z / 2
+      if (
+        p.x >= ic.center.x - hx &&
+        p.x <= ic.center.x + hx &&
+        p.z >= ic.center.z - hz &&
+        p.z <= ic.center.z + hz
+      ) {
+        next.add(id)
+      }
+    }
+
+    for (const id of next) {
+      if (!this.penetratedIds.has(id)) this.components.get(id)?.setPenetrated(true)
+    }
+    for (const id of this.penetratedIds) {
+      if (!next.has(id)) this.components.get(id)?.setPenetrated(false)
+    }
+    this.penetratedIds = next
   }
 
   dispose(): void {
@@ -229,6 +273,7 @@ export class FlowScene extends SceneManager {
       this.activePacket.dispose(this.scene)
       this.activePacket = null
     }
+    this.penetratedIds.clear()
     super.dispose()
   }
 }

@@ -26,6 +26,8 @@ export const STATE_OPACITY: Record<MeshState, number> = {
   dimmed:      0.25,
 }
 
+const PENETRATED_OPACITY = 0.15
+
 function buildGeometry(type: ComponentType, size: THREE.Vector3): THREE.BufferGeometry {
   const { x: w, y: h, z: d } = size
   switch (type) {
@@ -49,6 +51,10 @@ export class ComponentMesh {
   topCenter: THREE.Vector3
   id:        string
 
+  private edgeMesh:     THREE.LineSegments
+  private currentState: MeshState = 'idle'
+  private penetrated:   boolean   = false
+
   constructor(scene: THREE.Scene, component: InternalComponent) {
     this.id        = component.id
     this.topCenter = component.topCenter.clone()
@@ -61,14 +67,27 @@ export class ComponentMesh {
     })
     this.mesh = new THREE.Mesh(geo, mat)
     this.mesh.position.copy(component.center)
-    this.mesh.position.y += component.meshSize.y / 2  // sit bottom face on ground
+    this.mesh.position.y += component.meshSize.y / 2
     this.mesh.castShadow    = true
     this.mesh.receiveShadow = true
     this.mesh.userData.componentId = component.id
     scene.add(this.mesh)
+
+    // Edge outline — child of mesh so it follows position automatically.
+    // Shown only when the fill is made transparent by packet penetration.
+    this.edgeMesh = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({
+        color:       TYPE_COLOR[component.type],
+        transparent: false,
+      })
+    )
+    this.edgeMesh.visible = false
+    this.mesh.add(this.edgeMesh)
   }
 
   transitionTo(state: MeshState, durationMs: number): Promise<void> {
+    this.currentState = state
     return new Promise(resolve => {
       const mat            = this.mesh.material as THREE.MeshStandardMaterial
       const targetOpacity  = STATE_OPACITY[state]
@@ -83,13 +102,32 @@ export class ComponentMesh {
         .to({ opacity: targetOpacity, r: targetEmissive.r, g: targetEmissive.g, b: targetEmissive.b }, durationMs)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(({ opacity, r, g, b }) => {
-          mat.opacity = opacity
-          mat.transparent = opacity < 1.0
+          // Don't fight the penetration override — let onFrame win
+          if (!this.penetrated) {
+            mat.opacity = opacity
+            mat.transparent = opacity < 1.0
+          }
           mat.emissive.setRGB(r, g, b)
         })
         .onComplete(() => resolve())
         .start()
     })
+  }
+
+  // Called from FlowScene.onFrame — runs after TWEEN.update() so always wins.
+  setPenetrated(penetrated: boolean): void {
+    if (this.penetrated === penetrated) return
+    this.penetrated = penetrated
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    if (penetrated) {
+      mat.opacity     = PENETRATED_OPACITY
+      mat.transparent = true
+      this.edgeMesh.visible = true
+    } else {
+      mat.opacity     = STATE_OPACITY[this.currentState]
+      mat.transparent = mat.opacity < 1.0
+      this.edgeMesh.visible = false
+    }
   }
 
   addToRaycastTargets(targets: THREE.Object3D[]): void {
@@ -104,6 +142,8 @@ export class ComponentMesh {
   dispose(scene: THREE.Scene): void {
     scene.remove(this.mesh)
     this.mesh.geometry.dispose()
+    this.edgeMesh.geometry.dispose()
     ;(this.mesh.material as THREE.Material).dispose()
+    ;(this.edgeMesh.material as THREE.Material).dispose()
   }
 }
