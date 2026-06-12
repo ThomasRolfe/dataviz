@@ -45,6 +45,7 @@ export interface Component {
   label: string
   type: ComponentType
   shape?: ComponentShape
+  logo?: string
   position: { col: number; row: number; elevation?: number }
   size?: { w: number; h: number }
   meta?: {
