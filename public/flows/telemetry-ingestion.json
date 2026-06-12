@@ -1,0 +1,243 @@
+{
+  "meta": {
+    "title": "Multi-Tenant Telemetry Ingestion",
+    "description": "Events from multiple tenants are sampled or rejected by a shared telemetry collector before being forwarded to the observability platform."
+  },
+  "layout": {
+    "grid": { "cols": 10, "rows": 8 }
+  },
+  "zones": [
+    {
+      "id": "euwest1",
+      "label": "euwest-1",
+      "color": "#3a5a7c",
+      "bounds": { "col": 0, "row": 0, "width": 10, "height": 8 }
+    }
+  ],
+  "components": [
+    {
+      "id": "tenant_a",
+      "label": "Tenant A",
+      "type": "client",
+      "shape": "desktop",
+      "position": { "col": 0, "row": 0 },
+      "meta": {
+        "description": "SaaS tenant A. Emits metrics, logs, and traces via OTLP/gRPC.",
+        "notes": "High-volume sender. ~4k events/min."
+      }
+    },
+    {
+      "id": "tenant_b",
+      "label": "Tenant B",
+      "type": "client",
+      "shape": "desktop",
+      "position": { "col": 0, "row": 3 },
+      "meta": {
+        "description": "SaaS tenant B. Mixed signal types. Frequently sends debug-tagged events.",
+        "notes": "Debug tag filtering applies to this tenant."
+      }
+    },
+    {
+      "id": "tenant_c",
+      "label": "Tenant C",
+      "type": "client",
+      "shape": "desktop",
+      "position": { "col": 0, "row": 6 },
+      "meta": {
+        "description": "SaaS tenant C. Primarily distributed trace spans.",
+        "notes": "Subject to 10% head-based trace sampling."
+      }
+    },
+    {
+      "id": "collector",
+      "label": "Telemetry Collector",
+      "type": "service",
+      "shape": "server",
+      "position": { "col": 4, "row": 3 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "OpenTelemetry Collector. Applies tag-based sampling, PII filtering, and cardinality caps before forwarding accepted events.",
+        "file": "infra/otel-collector/config.yaml",
+        "notes": "Rules: drop debug=true, drop pii_detected=true, cap 10k series/tenant."
+      }
+    },
+    {
+      "id": "observability",
+      "label": "Observability Platform",
+      "type": "database",
+      "shape": "stack",
+      "position": { "col": 8, "row": 3 },
+      "meta": {
+        "description": "Grafana + Tempo + Loki stack. Stores accepted metrics, traces, and logs.",
+        "notes": "Retention: 90 days. Ingestion endpoint: /otlp/v1/logs"
+      }
+    }
+  ],
+  "connections": [
+    { "id": "conn_a",   "from": "tenant_a",   "to": "collector",    "label": "OTLP/gRPC", "route": "auto" },
+    { "id": "conn_b",   "from": "tenant_b",   "to": "collector",    "label": "OTLP/gRPC", "route": "auto" },
+    { "id": "conn_c",   "from": "tenant_c",   "to": "collector",    "label": "OTLP/gRPC", "route": "auto" },
+    { "id": "conn_fwd", "from": "collector",  "to": "observability","label": "batch export", "route": "auto" }
+  ],
+  "steps": [
+    {
+      "id": 0,
+      "name": "Overview",
+      "title": "Multi-tenant telemetry pipeline",
+      "description": "Three tenants stream events to a shared OpenTelemetry Collector inside euwest-1. The collector applies tag-based sampling rules — events tagged debug=true or pii_detected=true are dropped. Tenants exceeding 10k unique metric series are also capped. Accepted events are batched and forwarded to the observability platform every 30 s.",
+      "highlight": [],
+      "active_connections": [],
+      "camera": { "focus": null },
+      "packet": null
+    },
+    {
+      "id": 1,
+      "name": "A: metric accepted",
+      "title": "Tenant A — metric event ingested",
+      "description": "Tenant A emits a checkout latency metric with standard production tags. No restricted tags detected; the collector samples it at 100% and queues it for the next batch export.",
+      "highlight": ["tenant_a", "collector"],
+      "active_connections": ["conn_a"],
+      "camera": { "focus": null },
+      "packet": {
+        "connection": "conn_a",
+        "shape": "sphere",
+        "data": {
+          "tenant": "tenant-a",
+          "signal": "metric",
+          "name": "checkout.latency_ms",
+          "tags": { "env": "prod", "service": "checkout", "region": "euwest-1" },
+          "decision": "ACCEPTED",
+          "sample_rate": "100%"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "B: debug tag dropped",
+      "title": "Tenant B — debug=true event rejected",
+      "description": "Tenant B sends a log event with debug=true in the tag set. The collector's sampling policy blocks all debug-tagged events in the production pipeline to prevent log volume spikes from development instrumentation leaking into prod.",
+      "highlight": ["tenant_b", "collector"],
+      "active_connections": ["conn_b"],
+      "camera": { "focus": "collector", "zoom": 1.4 },
+      "annotations": [
+        {
+          "type": "callout",
+          "target": "collector",
+          "text": "REJECT — tag debug=true is blocked in prod pipeline"
+        }
+      ],
+      "packet": {
+        "connection": "conn_b",
+        "shape": "envelope",
+        "data": {
+          "tenant": "tenant-b",
+          "signal": "log",
+          "body": "Auth token refreshed for user u_82fa",
+          "tags": { "env": "prod", "service": "auth", "debug": "true" },
+          "decision": "REJECTED",
+          "reason": "debug tag blocked"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "C: trace sampled",
+      "title": "Tenant C — trace span accepted at 10%",
+      "description": "Tenant C emits a distributed trace span for an outbound API call. The collector applies 10% head-based sampling for trace signals from this tenant. This span wins the sample lottery and is accepted.",
+      "highlight": ["tenant_c", "collector"],
+      "active_connections": ["conn_c"],
+      "camera": { "focus": null },
+      "packet": {
+        "connection": "conn_c",
+        "shape": "token",
+        "data": {
+          "tenant": "tenant-c",
+          "signal": "trace_span",
+          "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+          "span_name": "POST /api/v2/order",
+          "tags": { "env": "prod", "service": "orders", "http.status_code": "200" },
+          "decision": "ACCEPTED",
+          "sample_rate": "10%"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "A: PII tag dropped",
+      "title": "Tenant A — pii_detected=true event rejected",
+      "description": "Tenant A sends a log line that the SDK's local scanner flagged with pii_detected=true. The collector's compliance filter drops any event carrying this tag before it can reach the shared observability store, preventing cross-tenant PII exposure.",
+      "highlight": ["tenant_a", "collector"],
+      "active_connections": ["conn_a"],
+      "camera": { "focus": "collector", "zoom": 1.4 },
+      "annotations": [
+        {
+          "type": "callout",
+          "target": "collector",
+          "text": "REJECT — pii_detected=true, compliance filter active"
+        }
+      ],
+      "packet": {
+        "connection": "conn_a",
+        "shape": "document",
+        "data": {
+          "tenant": "tenant-a",
+          "signal": "log",
+          "body": "Password reset requested for user@example.com",
+          "tags": { "env": "prod", "service": "iam", "pii_detected": "true" },
+          "decision": "REJECTED",
+          "reason": "PII compliance filter"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "B: cardinality capped",
+      "title": "Tenant B — metric series over cardinality cap",
+      "description": "Tenant B's instrumentation emits a metric with a high-cardinality label (unbounded user_id dimension), pushing this tenant's unique series count past the 10k/tenant cap. The collector drops the metric and records a quota violation.",
+      "highlight": ["tenant_b", "collector"],
+      "active_connections": ["conn_b"],
+      "camera": { "focus": "collector", "zoom": 1.4 },
+      "annotations": [
+        {
+          "type": "callout",
+          "target": "collector",
+          "text": "REJECT — tenant-b series count 14 382 > cap 10 000"
+        }
+      ],
+      "packet": {
+        "connection": "conn_b",
+        "shape": "sphere",
+        "data": {
+          "tenant": "tenant-b",
+          "signal": "metric",
+          "name": "api.request.duration_ms",
+          "tags": { "env": "prod", "service": "api", "user_id": "<unbounded>" },
+          "series_count": 14382,
+          "decision": "REJECTED",
+          "reason": "cardinality cap exceeded (limit: 10000)"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "name": "Flush to platform",
+      "title": "Collector flushes accepted batch",
+      "description": "Every 30 seconds the collector compresses and forwards the accumulated accepted events to the observability platform. Events from tenants A and C are in this batch. The three rejected events were permanently discarded at the collector.",
+      "highlight": ["collector", "observability"],
+      "active_connections": ["conn_fwd"],
+      "camera": { "focus": null },
+      "packet": {
+        "connection": "conn_fwd",
+        "shape": "blob",
+        "data": {
+          "batch_events": 1842,
+          "compressed_kb": 134,
+          "tenants_included": ["tenant-a", "tenant-c"],
+          "tenants_zero_events": ["tenant-b"],
+          "rejected_this_window": 3,
+          "export_interval_s": 30
+        }
+      }
+    }
+  ]
+}
