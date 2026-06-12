@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import * as TWEEN from '@tweenjs/tween.js'
 import type { InternalComponent } from '@/types/internal'
 import type { ComponentType } from '@/types/schema'
+import { buildShapeMeshes } from '@/scene/componentShapes'
 
 export type MeshState = 'idle' | 'highlighted' | 'dimmed'
 
@@ -28,29 +29,13 @@ export const STATE_OPACITY: Record<MeshState, number> = {
 
 const PENETRATED_OPACITY = 0.15
 
-function buildGeometry(type: ComponentType, size: THREE.Vector3): THREE.BufferGeometry {
-  const { x: w, y: h, z: d } = size
-  switch (type) {
-    case 'client':
-      return new THREE.BoxGeometry(w, h, d)
-    case 'service':
-      return new THREE.BoxGeometry(w, h, d)
-    case 'database':
-      return new THREE.CylinderGeometry(w / 2, w / 2, h, 24)
-    case 'queue':
-      return new THREE.BoxGeometry(w, h * 0.5, d)
-    case 'function':
-      return new THREE.OctahedronGeometry(Math.min(w, d) * 0.45)
-    case 'external':
-      return new THREE.BoxGeometry(w, h, d)
-  }
-}
-
 export class ComponentMesh {
-  mesh:      THREE.Mesh
+  group:     THREE.Group
+  hitMesh:   THREE.Mesh
   topCenter: THREE.Vector3
   id:        string
 
+  private mat:          THREE.MeshStandardMaterial
   private edgeMesh:     THREE.LineSegments
   private currentState: MeshState = 'idle'
   private penetrated:   boolean   = false
@@ -59,56 +44,70 @@ export class ComponentMesh {
     this.id        = component.id
     this.topCenter = component.topCenter.clone()
 
-    const geo = buildGeometry(component.type, component.meshSize)
-    const mat = new THREE.MeshStandardMaterial({
+    const { x: w, y: h, z: d } = component.meshSize
+
+    // Group sits with its origin at the component's vertical midpoint
+    this.group = new THREE.Group()
+    this.group.position.set(
+      component.center.x,
+      component.center.y + h / 2,
+      component.center.z,
+    )
+
+    // Shared material — all visual meshes use this so transitions apply uniformly
+    this.mat = new THREE.MeshStandardMaterial({
       color:       TYPE_COLOR[component.type],
       transparent: true,
       opacity:     STATE_OPACITY['idle'],
     })
-    this.mesh = new THREE.Mesh(geo, mat)
-    this.mesh.position.copy(component.center)
-    this.mesh.position.y += component.meshSize.y / 2
-    this.mesh.castShadow    = true
-    this.mesh.receiveShadow = true
-    this.mesh.userData.componentId = component.id
-    scene.add(this.mesh)
 
-    // Edge outline — child of mesh so it follows position automatically.
-    // Shown only when the fill is made transparent by packet penetration.
+    // Visual meshes centered at group origin (y spans -h/2 → +h/2)
+    const visualMeshes = buildShapeMeshes(component.type, component.shape, component.meshSize, this.mat)
+    for (const m of visualMeshes) {
+      m.castShadow    = true
+      m.receiveShadow = true
+      this.group.add(m)
+    }
+
+    // Invisible hit box for raycasting — full bounding box, no render
+    this.hitMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshBasicMaterial({ visible: false }),
+    )
+    this.hitMesh.userData.componentId = component.id
+    this.group.add(this.hitMesh)
+
+    // Edge outline — bounding-box shape works for all component shapes
     this.edgeMesh = new THREE.LineSegments(
-      new THREE.EdgesGeometry(geo),
-      new THREE.LineBasicMaterial({
-        color:       TYPE_COLOR[component.type],
-        transparent: false,
-      })
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)),
+      new THREE.LineBasicMaterial({ color: TYPE_COLOR[component.type] }),
     )
     this.edgeMesh.visible = false
-    this.edgeMesh.userData.componentId = component.id
-    this.mesh.add(this.edgeMesh)
+    this.group.add(this.edgeMesh)
+
+    scene.add(this.group)
   }
 
   transitionTo(state: MeshState, durationMs: number): Promise<void> {
     this.currentState = state
     return new Promise(resolve => {
-      const mat            = this.mesh.material as THREE.MeshStandardMaterial
       const targetOpacity  = STATE_OPACITY[state]
       const targetEmissive = new THREE.Color(STATE_EMISSIVE[state])
 
       new TWEEN.Tween({
-        opacity: mat.opacity,
-        r:       mat.emissive.r,
-        g:       mat.emissive.g,
-        b:       mat.emissive.b,
+        opacity: this.mat.opacity,
+        r:       this.mat.emissive.r,
+        g:       this.mat.emissive.g,
+        b:       this.mat.emissive.b,
       })
         .to({ opacity: targetOpacity, r: targetEmissive.r, g: targetEmissive.g, b: targetEmissive.b }, durationMs)
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(({ opacity, r, g, b }) => {
-          // Don't fight the penetration override — let onFrame win
           if (!this.penetrated) {
-            mat.opacity = opacity
-            mat.transparent = opacity < 1.0
+            this.mat.opacity     = opacity
+            this.mat.transparent = opacity < 1.0
           }
-          mat.emissive.setRGB(r, g, b)
+          this.mat.emissive.setRGB(r, g, b)
         })
         .onComplete(() => resolve())
         .start()
@@ -119,32 +118,37 @@ export class ComponentMesh {
   setPenetrated(penetrated: boolean): void {
     if (this.penetrated === penetrated) return
     this.penetrated = penetrated
-    const mat = this.mesh.material as THREE.MeshStandardMaterial
     if (penetrated) {
-      mat.opacity     = PENETRATED_OPACITY
-      mat.transparent = true
+      this.mat.opacity      = PENETRATED_OPACITY
+      this.mat.transparent  = true
       this.edgeMesh.visible = true
     } else {
-      mat.opacity     = STATE_OPACITY[this.currentState]
-      mat.transparent = mat.opacity < 1.0
+      this.mat.opacity      = STATE_OPACITY[this.currentState]
+      this.mat.transparent  = this.mat.opacity < 1.0
       this.edgeMesh.visible = false
     }
   }
 
   addToRaycastTargets(targets: THREE.Object3D[]): void {
-    targets.push(this.mesh)
+    targets.push(this.hitMesh)
   }
 
   removeFromRaycastTargets(targets: THREE.Object3D[]): void {
-    const idx = targets.indexOf(this.mesh)
+    const idx = targets.indexOf(this.hitMesh)
     if (idx !== -1) targets.splice(idx, 1)
   }
 
   dispose(scene: THREE.Scene): void {
-    scene.remove(this.mesh)
-    this.mesh.geometry.dispose()
+    scene.remove(this.group)
+    this.hitMesh.geometry.dispose()
+    ;(this.hitMesh.material as THREE.Material).dispose()
     this.edgeMesh.geometry.dispose()
-    ;(this.mesh.material as THREE.Material).dispose()
     ;(this.edgeMesh.material as THREE.Material).dispose()
+    this.mat.dispose()
+    for (const child of this.group.children) {
+      if (child instanceof THREE.Mesh && child !== this.hitMesh) {
+        child.geometry.dispose()
+      }
+    }
   }
 }

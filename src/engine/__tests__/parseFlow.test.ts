@@ -72,6 +72,27 @@ describe('validateFlow()', () => {
     expect(() => validateFlow(flow)).toThrow(/Invalid component type/)
   })
 
+  it('accepts all valid component shapes', () => {
+    const shapes = ['stack', 'cloud', 'server', 'desktop', 'smartphone', 'router', 'deskphone', 'wall'] as const
+    for (const shape of shapes) {
+      const flow = clone(minimalFlow()) as Record<string, unknown>
+      ;(flow['components'] as Record<string, unknown>[])[0]['shape'] = shape
+      expect(() => validateFlow(flow), `shape: ${shape}`).not.toThrow()
+    }
+  })
+
+  it('throws on an invalid component shape', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['components'] as Record<string, unknown>[])[0]['shape'] = 'triangle'
+    expect(() => validateFlow(flow)).toThrow(/Invalid component shape/)
+  })
+
+  it('accepts components with no shape (shape is optional)', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    // shape is not set — must not throw
+    expect(() => validateFlow(flow)).not.toThrow()
+  })
+
   it('throws when connection.from references an unknown component', () => {
     const flow = clone(minimalFlow()) as Record<string, unknown>
     ;(flow['connections'] as Record<string, unknown>[])[0]['from'] = 'does_not_exist'

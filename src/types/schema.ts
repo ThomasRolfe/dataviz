@@ -30,10 +30,21 @@ export type ComponentType =
   | 'function'
   | 'external'
 
+export type ComponentShape =
+  | 'stack'
+  | 'cloud'
+  | 'server'
+  | 'desktop'
+  | 'smartphone'
+  | 'router'
+  | 'deskphone'
+  | 'wall'
+
 export interface Component {
   id: string
   label: string
   type: ComponentType
+  shape?: ComponentShape
   position: { col: number; row: number; elevation?: number }
   size?: { w: number; h: number }
   meta?: {

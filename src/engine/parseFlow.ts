@@ -26,8 +26,9 @@ function assertObject(val: unknown, field: string): Record<string, unknown> {
   return val as Record<string, unknown>
 }
 
-const VALID_COMPONENT_TYPES = new Set(['client', 'service', 'database', 'queue', 'function', 'external'])
-const VALID_PACKET_SHAPES   = new Set(['sphere', 'document', 'token', 'blob', 'envelope'])
+const VALID_COMPONENT_TYPES  = new Set(['client', 'service', 'database', 'queue', 'function', 'external'])
+const VALID_COMPONENT_SHAPES = new Set(['stack', 'cloud', 'server', 'desktop', 'smartphone', 'router', 'deskphone', 'wall'])
+const VALID_PACKET_SHAPES    = new Set(['sphere', 'document', 'token', 'blob', 'envelope'])
 const VALID_ANNOTATION_TYPES = new Set(['callout', 'transform'])
 
 export function validateFlow(raw: unknown): FlowDefinition {
@@ -62,6 +63,10 @@ export function validateFlow(raw: unknown): FlowDefinition {
     assertString(comp['label'], 'component.label')
     const type = assertString(comp['type'], 'component.type')
     if (!VALID_COMPONENT_TYPES.has(type)) throw new Error(`Invalid component type: ${type}`)
+    if (comp['shape'] !== undefined) {
+      const shape = assertString(comp['shape'], 'component.shape')
+      if (!VALID_COMPONENT_SHAPES.has(shape)) throw new Error(`Invalid component shape: ${shape}`)
+    }
     const pos = assertObject(comp['position'], 'component.position')
     assertNumber(pos['col'], 'component.position.col')
     assertNumber(pos['row'], 'component.position.row')
@@ -155,6 +160,7 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
       id:        c.id,
       label:     c.label,
       type:      c.type,
+      shape:     c.shape,
       center,
       meshSize,
       topCenter,
