@@ -3,6 +3,7 @@ import * as TWEEN from '@tweenjs/tween.js'
 import type { InternalComponent } from '@/types/internal'
 import type { ComponentType } from '@/types/schema'
 import { buildShapeMeshes } from '@/scene/shapeRegistry'
+import { buildLogoMeshes } from '@/scene/LogoMesh'
 import type { ComponentMeshUserData } from '@/scene/meshUserData'
 
 export type MeshState = 'idle' | 'highlighted' | 'dimmed'
@@ -63,7 +64,9 @@ export class ComponentMesh {
     })
 
     // Visual meshes centered at group origin (y spans -h/2 → +h/2)
-    const visualMeshes = buildShapeMeshes(component.type, component.shape, component.meshSize, this.mat)
+    const visualMeshes = component.logo
+      ? buildLogoMeshes(component.logo, component.meshSize, this.mat)
+      : buildShapeMeshes(component.type, component.shape, component.meshSize, this.mat)
     for (const m of visualMeshes) {
       m.castShadow    = true
       m.receiveShadow = true

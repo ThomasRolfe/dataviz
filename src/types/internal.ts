@@ -6,6 +6,7 @@ export interface InternalComponent {
   label: string
   type: ComponentType
   shape?: ComponentShape
+  logo?: string
   center: THREE.Vector3
   meshSize: THREE.Vector3
   topCenter: THREE.Vector3

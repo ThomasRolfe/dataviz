@@ -23,7 +23,8 @@ export function ZoneLabels({ zones, bridge }: ZoneLabelsProps) {
       const el = itemRefs.current.get(i)
       if (!el) return
       const pos = bridge.worldToScreen(zone.position)
-      el.style.transform = `translate(${pos.x}px, ${pos.y}px) rotate(30deg)`
+      // Anchor the label's right edge and vertical midpoint at the corner
+      el.style.transform = `translate(calc(${pos.x}px - 100%), calc(${pos.y}px - 50%))`
     })
   }, [zones, bridge])
 
@@ -40,20 +41,22 @@ export function ZoneLabels({ zones, bridge }: ZoneLabelsProps) {
             else itemRefs.current.delete(i)
           }}
           style={{
-            position:      'absolute',
-            top:           0,
-            left:          0,
-            transform:        'translate(-9999px, -9999px)',
-            transformOrigin:  '0 0',
-            color:            zone.color,
-            fontSize:      '0.68rem',
-            fontWeight:    700,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            pointerEvents: 'none',
-            textShadow:    '0 1px 4px rgba(0,0,0,0.9)',
-            padding:       '2px 5px',
-            userSelect:    'none',
+            position:        'absolute',
+            top:             0,
+            left:            0,
+            transform:       'translate(-9999px, -9999px)',
+            color:           zone.color,
+            backgroundColor: 'rgba(255, 255, 255, 0.92)',
+            border:          `1.5px solid ${zone.color}`,
+            borderRadius:    '0.25rem',
+            padding:         '2px 8px',
+            fontSize:        '0.68rem',
+            fontWeight:      700,
+            letterSpacing:   '0.1em',
+            textTransform:   'uppercase',
+            whiteSpace:      'nowrap',
+            pointerEvents:   'none',
+            userSelect:      'none',
           }}
         >
           {zone.label}
