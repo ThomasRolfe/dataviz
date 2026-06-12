@@ -8,22 +8,27 @@ const TUBE_SEGMENTS    = 64
 const TUBE_RADIUS      = 0.06
 const TUBE_RADIUS_SEGS = 8
 
+const OPACITY_IDLE       = 0.20
+const OPACITY_ACTIVE     = 0.45
+const OPACITY_TRAVERSING = 1.00
+
 export class ConnectionPipe {
   mesh:     THREE.Mesh
   curve:    THREE.CatmullRomCurve3
   id:       string
   midpoint: THREE.Vector3
 
-  private idleColor:      number
-  private activeColor:    number
-  private activeEmissive: number
-  private currentActive:  boolean = false
+  private idleColor:         number
+  private activeColor:       number
+  private activeEmissive:    number
+  private currentActive:     boolean = false
+  private packetTraversing:  boolean = false
 
   constructor(scene: THREE.Scene, connection: InternalConnection) {
     this.id    = connection.id
     this.curve = connection.curve
 
-    const c = THEME_COLORS['dark']
+    const c = THEME_COLORS['light']
     this.idleColor      = c.pipeIdle
     this.activeColor    = c.pipeActive
     this.activeEmissive = c.pipeActiveEmissive
@@ -38,7 +43,7 @@ export class ConnectionPipe {
     const mat = new THREE.MeshStandardMaterial({
       color:       this.idleColor,
       transparent: true,
-      opacity:     0.35,
+      opacity:     OPACITY_IDLE,
     })
     this.mesh = new THREE.Mesh(geo, mat)
     this.mesh.castShadow    = true
@@ -55,23 +60,37 @@ export class ConnectionPipe {
     this.activeEmissive = c.pipeActiveEmissive
 
     const mat = this.mesh.material as THREE.MeshStandardMaterial
-    if (this.currentActive) {
-      mat.color.setHex(this.activeColor)
-      mat.emissive.setHex(this.activeEmissive)
-    } else {
-      mat.color.setHex(this.idleColor)
-      mat.emissive.setHex(0x000000)
-    }
+    mat.color.setHex(this.packetTraversing || this.currentActive ? this.activeColor : this.idleColor)
+    mat.emissive.setHex(this.packetTraversing ? this.activeEmissive : 0x000000)
+    mat.opacity = this.packetTraversing ? OPACITY_TRAVERSING
+                : this.currentActive    ? OPACITY_ACTIVE
+                :                         OPACITY_IDLE
   }
 
   setActive(active: boolean, durationMs: number): Promise<void> {
     this.currentActive = active
-    return new Promise(resolve => {
-      const mat = this.mesh.material as THREE.MeshStandardMaterial
-      const targetColor    = new THREE.Color(active ? this.activeColor : this.idleColor)
-      const targetOpacity  = active ? 1.0 : 0.35
-      const targetEmissive = new THREE.Color(active ? this.activeEmissive : 0x000000)
+    return this.tweenTo(durationMs)
+  }
 
+  setPacketTraversing(traversing: boolean, durationMs: number): void {
+    this.packetTraversing = traversing
+    this.tweenTo(durationMs)
+  }
+
+  private tweenTo(durationMs: number): Promise<void> {
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+
+    const targetOpacity  = this.packetTraversing ? OPACITY_TRAVERSING
+                         : this.currentActive    ? OPACITY_ACTIVE
+                         :                         OPACITY_IDLE
+    const targetColor    = new THREE.Color(
+      this.packetTraversing || this.currentActive ? this.activeColor : this.idleColor
+    )
+    const targetEmissive = new THREE.Color(
+      this.packetTraversing ? this.activeEmissive : 0x000000
+    )
+
+    return new Promise(resolve => {
       new TWEEN.Tween({
         r:       mat.color.r,
         g:       mat.color.g,
@@ -93,8 +112,8 @@ export class ConnectionPipe {
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(({ r, g, b, opacity, er, eg, eb }) => {
           mat.color.setRGB(r, g, b)
-          mat.opacity = opacity
-          mat.transparent = opacity < 1.0
+          mat.opacity      = opacity
+          mat.transparent  = opacity < 1.0
           mat.emissive.setRGB(er, eg, eb)
         })
         .onComplete(() => resolve())
