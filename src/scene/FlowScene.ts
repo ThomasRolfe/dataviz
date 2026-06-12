@@ -302,6 +302,15 @@ export class FlowScene extends SceneManager {
     this.renderer.setSize(width, height, false)
   }
 
+  getConnectionLabelData(): Array<{ id: string; label: string; midpoint: THREE.Vector3 }> {
+    const result: Array<{ id: string; label: string; midpoint: THREE.Vector3 }> = []
+    for (const [id, pipe] of this.pipes) {
+      const label = this.graph.connections.get(id)?.label
+      if (label) result.push({ id, label, midpoint: pipe.midpoint })
+    }
+    return result
+  }
+
   getZoneLabelData(): Array<{ label: string; position: THREE.Vector3; color: string }> {
     return this.graph.zones.map((zone, i) => ({
       label:    zone.label,

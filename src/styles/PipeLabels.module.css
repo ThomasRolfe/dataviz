@@ -1,0 +1,21 @@
+.badge {
+  position:        absolute;
+  top:             0;
+  left:            0;
+  transform-origin: 0 0;
+
+  padding:         2px 6px;
+  border-radius:   3px;
+  border:          1px solid var(--panel-border);
+  background:      var(--panel-bg);
+
+  color:           var(--text-muted);
+  font-size:       0.60rem;
+  font-family:     ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+  letter-spacing:  0.04em;
+  white-space:     nowrap;
+  pointer-events:  none;
+  user-select:     none;
+
+  opacity:         0.85;
+}
