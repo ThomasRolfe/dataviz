@@ -1,14 +1,12 @@
 import * as THREE from 'three'
 import * as TWEEN from '@tweenjs/tween.js'
 import type { InternalConnection } from '@/types/internal'
+import { THEME_COLORS } from '@/scene/ThemeColors'
+import type { Theme } from '@/scene/ThemeColors'
 
 const TUBE_SEGMENTS    = 64
 const TUBE_RADIUS      = 0.06
 const TUBE_RADIUS_SEGS = 8
-
-const IDLE_COLOR    = 0x334455
-const ACTIVE_COLOR  = 0x4a6a8a
-const ACTIVE_EMISSIVE = 0x1a3a5c
 
 export class ConnectionPipe {
   mesh:     THREE.Mesh
@@ -16,9 +14,19 @@ export class ConnectionPipe {
   id:       string
   midpoint: THREE.Vector3
 
+  private idleColor:      number
+  private activeColor:    number
+  private activeEmissive: number
+  private currentActive:  boolean = false
+
   constructor(scene: THREE.Scene, connection: InternalConnection) {
     this.id    = connection.id
     this.curve = connection.curve
+
+    const c = THEME_COLORS['dark']
+    this.idleColor      = c.pipeIdle
+    this.activeColor    = c.pipeActive
+    this.activeEmissive = c.pipeActiveEmissive
 
     const geo = new THREE.TubeGeometry(
       connection.curve,
@@ -28,7 +36,7 @@ export class ConnectionPipe {
       false
     )
     const mat = new THREE.MeshStandardMaterial({
-      color:       IDLE_COLOR,
+      color:       this.idleColor,
       transparent: true,
       opacity:     0.35,
     })
@@ -40,12 +48,29 @@ export class ConnectionPipe {
     this.midpoint = connection.curve.getPointAt(0.5)
   }
 
+  setTheme(theme: Theme): void {
+    const c = THEME_COLORS[theme]
+    this.idleColor      = c.pipeIdle
+    this.activeColor    = c.pipeActive
+    this.activeEmissive = c.pipeActiveEmissive
+
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    if (this.currentActive) {
+      mat.color.setHex(this.activeColor)
+      mat.emissive.setHex(this.activeEmissive)
+    } else {
+      mat.color.setHex(this.idleColor)
+      mat.emissive.setHex(0x000000)
+    }
+  }
+
   setActive(active: boolean, durationMs: number): Promise<void> {
+    this.currentActive = active
     return new Promise(resolve => {
       const mat = this.mesh.material as THREE.MeshStandardMaterial
-      const targetColor    = new THREE.Color(active ? ACTIVE_COLOR : IDLE_COLOR)
+      const targetColor    = new THREE.Color(active ? this.activeColor : this.idleColor)
       const targetOpacity  = active ? 1.0 : 0.35
-      const targetEmissive = new THREE.Color(active ? ACTIVE_EMISSIVE : 0x000000)
+      const targetEmissive = new THREE.Color(active ? this.activeEmissive : 0x000000)
 
       new TWEEN.Tween({
         r:       mat.color.r,

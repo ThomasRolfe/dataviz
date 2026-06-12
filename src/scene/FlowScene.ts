@@ -9,7 +9,10 @@ import type { MeshState } from '@/scene/ComponentMesh'
 import { ConnectionPipe } from '@/scene/ConnectionPipe'
 import { DataPacket } from '@/scene/DataPacket'
 import { HoverSystem } from '@/scene/HoverSystem'
-import { setupLighting } from '@/scene/LightingSetup'
+import { setupLighting, updateLighting } from '@/scene/LightingSetup'
+import type { SceneLights } from '@/scene/LightingSetup'
+import { THEME_COLORS } from '@/scene/ThemeColors'
+import type { Theme } from '@/scene/ThemeColors'
 import type { InternalGraph } from '@/types/internal'
 import type { Step } from '@/types/schema'
 import { CELL_SIZE } from '@/engine/layoutEngine'
@@ -22,6 +25,8 @@ export class FlowScene extends SceneManager {
   private pipes:          Map<string, ConnectionPipe>
   private zones:          ZoneRenderer[]
   private grid:           GridFloor
+  private lights:         SceneLights
+  private currentTheme:   Theme = 'dark'
   private activePacket:    DataPacket | null = null
   private penetratedIds:  Set<string> = new Set()
   private hoverSystem:     HoverSystem
@@ -35,7 +40,7 @@ export class FlowScene extends SceneManager {
     super(canvas)
     this.graph = graph
 
-    setupLighting(this.scene)
+    this.lights = setupLighting(this.scene)
 
     // Build scene objects
     this.grid = new GridFloor(this.scene, graph)
@@ -109,6 +114,15 @@ export class FlowScene extends SceneManager {
     this.hoverSystem['onHoverChange'] = fn
   }
 
+  setTheme(theme: Theme): void {
+    this.currentTheme = theme
+    this.renderer.setClearColor(THEME_COLORS[theme].clearColor)
+    updateLighting(this.lights, theme)
+    this.grid.setTheme(theme, this.scene)
+    for (const pipe of this.pipes.values()) pipe.setTheme(theme)
+    this.activePacket?.setTheme(theme)
+  }
+
   applyStep(step: Step, _prevStep: Step | null, durationMs: number): void {
     const PHASE_MATERIAL = durationMs * 0.4
     const PHASE_CAMERA   = durationMs * 0.3
@@ -147,8 +161,8 @@ export class FlowScene extends SceneManager {
     if (step.packet) {
       const pipe = this.pipes.get(step.packet.connection)
       if (pipe) {
-        const conn = this.graph.connections.get(step.packet.connection)
-        const packet = new DataPacket(this.scene, step.packet.shape)
+        const conn   = this.graph.connections.get(step.packet.connection)
+        const packet = new DataPacket(this.scene, step.packet.shape, this.currentTheme)
         packet.mesh.userData.componentId  = '__packet__'
         packet.mesh.userData.packetData   = step.packet.data
         packet.mesh.userData.packetLabel  = conn?.label ?? step.packet.connection

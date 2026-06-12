@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { CanvasContainer } from '@/components/CanvasContainer'
 import { StepControls } from '@/components/StepControls'
 import { StepHUD } from '@/components/StepHUD'
@@ -6,12 +6,14 @@ import { AnnotationOverlay } from '@/components/AnnotationOverlay'
 import { HoverTooltip } from '@/components/HoverTooltip'
 import { ZoneLabels } from '@/components/ZoneLabels'
 import { PacketTooltip } from '@/components/PacketTooltip'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { buildGraph } from '@/engine/parseFlow'
 import { StepEngine } from '@/engine/stepEngine'
 import { useStepEngine } from '@/hooks/useStepEngine'
 import { useHover } from '@/hooks/useHover'
 import type { FlowScene } from '@/scene/FlowScene'
 import type { OverlayBridge } from '@/scene/OverlayBridge'
+import type { Theme } from '@/scene/ThemeColors'
 import type { InternalGraph } from '@/types/internal'
 import type { FlowDefinition } from '@/types/schema'
 import type { Vector3 } from 'three'
@@ -29,6 +31,7 @@ function App() {
   const [engine, setEngine] = useState<StepEngine | null>(null)
   const [error, setError]   = useState<string | null>(null)
   const [bridge, setBridge] = useState<OverlayBridge | null>(null)
+  const [theme, setTheme]   = useState<Theme>('dark')
   const [zoneLabelData, setZoneLabelData] = useState<
     Array<{ label: string; position: Vector3; color: string }>
   >([])
@@ -57,6 +60,13 @@ function App() {
       sceneRef.current?.applyStep(state.step, null, 800)
     })
   }, [engine])
+
+  const handleThemeToggle = useCallback(() => {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    document.documentElement.dataset.theme = next
+    sceneRef.current?.setTheme(next)
+  }, [theme])
 
   if (error) {
     return (
@@ -90,6 +100,8 @@ function App() {
           }
         }}
       />
+
+      <ThemeToggle theme={theme} onToggle={handleThemeToggle} />
 
       {/* Persistent zone labels */}
       {bridge && zoneLabelData.length > 0 && (

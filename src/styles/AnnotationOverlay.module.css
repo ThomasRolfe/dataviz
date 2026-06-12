@@ -9,7 +9,7 @@
 }
 
 .leaderLine {
-  stroke: rgba(255, 255, 255, 0.22);
+  stroke: var(--leader-line);
   stroke-width: 1;
   stroke-dasharray: 4 4;
   opacity: 0;
@@ -31,19 +31,19 @@
 }
 
 .callout {
-  background: rgba(10, 10, 30, 0.88);
-  color: #f0f0f0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-left: 3px solid rgba(100, 160, 255, 0.7);
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--panel-border);
+  border-left: 3px solid var(--accent-blue);
   backdrop-filter: blur(8px);
 }
 
 .transform {
-  background: rgba(5, 5, 20, 0.92);
-  color: #d0e8d0;
+  background: var(--transform-bg);
+  color: var(--transform-fg);
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 0.72rem;
-  border: 1px solid rgba(0, 255, 204, 0.18);
-  border-left: 3px solid rgba(0, 255, 204, 0.7);
+  border: 1px solid var(--transform-border);
+  border-left: 3px solid var(--accent-cyan);
   backdrop-filter: blur(8px);
 }

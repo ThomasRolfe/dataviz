@@ -5,8 +5,8 @@
   pointer-events: none;
   min-width: 200px;
   max-width: 280px;
-  background: rgba(10, 10, 30, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 0.5rem;
   padding: 0.6rem 0.8rem;
   backdrop-filter: blur(8px);
@@ -18,9 +18,9 @@
 .title {
   font-size: 0.8rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
   margin-bottom: 0.4rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--divider);
   padding-bottom: 0.3rem;
 }
 
@@ -31,7 +31,7 @@
 }
 
 .key {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--popout-key);
   font-family: 'SFMono-Regular', Consolas, monospace;
 }
 
@@ -55,7 +55,7 @@
 }
 
 .valueObject {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--popout-obj);
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-style: italic;
 }

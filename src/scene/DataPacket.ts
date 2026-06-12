@@ -1,9 +1,9 @@
 import * as THREE from 'three'
 import type { PacketShape } from '@/types/schema'
+import { THEME_COLORS } from '@/scene/ThemeColors'
+import type { Theme } from '@/scene/ThemeColors'
 
-const PACKET_COLOR = 0x00ffcc
-
-function buildPacketMesh(shape: PacketShape): THREE.Mesh {
+function buildPacketMesh(shape: PacketShape, color: number): THREE.Mesh {
   let geometry: THREE.BufferGeometry
 
   switch (shape) {
@@ -30,8 +30,8 @@ function buildPacketMesh(shape: PacketShape): THREE.Mesh {
   return new THREE.Mesh(
     geometry,
     new THREE.MeshStandardMaterial({
-      color:             PACKET_COLOR,
-      emissive:          new THREE.Color(PACKET_COLOR),
+      color,
+      emissive:          new THREE.Color(color),
       emissiveIntensity: 1.5,
       metalness:         0.2,
       roughness:         0.1,
@@ -47,9 +47,16 @@ export class DataPacket {
   private duration:  number = 0
   private onDone:    (() => void) | null = null
 
-  constructor(scene: THREE.Scene, shape: PacketShape) {
-    this.mesh = buildPacketMesh(shape)
+  constructor(scene: THREE.Scene, shape: PacketShape, theme: Theme = 'dark') {
+    this.mesh = buildPacketMesh(shape, THEME_COLORS[theme].packetColor)
     scene.add(this.mesh)
+  }
+
+  setTheme(theme: Theme): void {
+    const color = THEME_COLORS[theme].packetColor
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    mat.color.setHex(color)
+    mat.emissive.setHex(color)
   }
 
   travel(curve: THREE.CatmullRomCurve3, durationMs: number): Promise<void> {

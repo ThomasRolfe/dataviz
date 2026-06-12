@@ -4,12 +4,12 @@
   left: 0;
   pointer-events: none;
   max-width: 280px;
-  background: rgba(0, 20, 15, 0.92);
-  border: 1px solid rgba(0, 255, 204, 0.35);
+  background: var(--panel-bg);
+  border: 1px solid var(--packet-border);
   border-radius: 0.5rem;
   padding: 0.6rem 0.8rem;
   backdrop-filter: blur(8px);
-  color: #e0e0e0;
+  color: var(--text-primary);
   font-size: 0.8rem;
   line-height: 1.5;
   z-index: 300;
@@ -18,14 +18,14 @@
 .tooltip strong {
   display: block;
   font-size: 0.85rem;
-  color: #00ffcc;
+  color: var(--packet-title);
   margin-bottom: 0.2rem;
 }
 
 .shape {
   display: inline-block;
   font-size: 0.7rem;
-  color: rgba(0, 255, 204, 0.6);
+  color: var(--packet-shape);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: 0.4rem;
@@ -34,11 +34,11 @@
 .payload {
   margin: 0.3rem 0 0;
   padding: 0.4rem 0.5rem;
-  background: rgba(0, 255, 204, 0.06);
+  background: var(--packet-payload-bg);
   border-radius: 0.3rem;
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 0.72rem;
-  color: #b0f0e0;
+  color: var(--packet-payload-fg);
   white-space: pre;
   overflow: auto;
   max-height: 180px;

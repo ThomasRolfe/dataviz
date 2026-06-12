@@ -4,11 +4,71 @@
   padding: 0;
 }
 
+:root {
+  --bg-canvas:         #1a1a2e;
+  --panel-bg:          rgba(10, 10, 30, 0.88);
+  --panel-border:      rgba(255, 255, 255, 0.12);
+  --text-primary:      #e0e0e0;
+  --text-strong:       #ffffff;
+  --text-secondary:    rgba(255, 255, 255, 0.6);
+  --text-muted:        rgba(255, 255, 255, 0.5);
+  --btn-bg:            rgba(255, 255, 255, 0.08);
+  --btn-border:        rgba(255, 255, 255, 0.15);
+  --btn-hover:         rgba(255, 255, 255, 0.16);
+  --divider:           rgba(255, 255, 255, 0.1);
+  --accent-blue:       rgba(100, 160, 255, 0.7);
+  --accent-cyan:       rgba(0, 255, 204, 0.7);
+  --accent-cyan-dim:   rgba(0, 255, 204, 0.18);
+  --leader-line:       rgba(255, 255, 255, 0.22);
+  --code-fg:           #00ffcc;
+  --code-bg:           rgba(0, 255, 204, 0.08);
+  --packet-border:     rgba(0, 255, 204, 0.35);
+  --packet-title:      #00ffcc;
+  --packet-shape:      rgba(0, 255, 204, 0.6);
+  --packet-payload-bg: rgba(0, 255, 204, 0.06);
+  --packet-payload-fg: #b0f0e0;
+  --transform-bg:      rgba(5, 5, 20, 0.92);
+  --transform-fg:      #d0e8d0;
+  --transform-border:  rgba(0, 255, 204, 0.18);
+  --popout-key:        rgba(255, 255, 255, 0.5);
+  --popout-obj:        rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] {
+  --bg-canvas:         #edf0f5;
+  --panel-bg:          rgba(255, 255, 255, 0.92);
+  --panel-border:      rgba(0, 0, 0, 0.10);
+  --text-primary:      #1a1a2e;
+  --text-strong:       #0d0d1a;
+  --text-secondary:    rgba(0, 0, 0, 0.55);
+  --text-muted:        rgba(0, 0, 0, 0.40);
+  --btn-bg:            rgba(0, 0, 0, 0.05);
+  --btn-border:        rgba(0, 0, 0, 0.15);
+  --btn-hover:         rgba(0, 0, 0, 0.10);
+  --divider:           rgba(0, 0, 0, 0.10);
+  --accent-blue:       rgba(30, 90, 220, 0.8);
+  --accent-cyan:       rgba(0, 140, 90, 0.8);
+  --accent-cyan-dim:   rgba(0, 140, 90, 0.20);
+  --leader-line:       rgba(0, 0, 0, 0.22);
+  --code-fg:           #007755;
+  --code-bg:           rgba(0, 140, 90, 0.08);
+  --packet-border:     rgba(0, 140, 90, 0.40);
+  --packet-title:      #006644;
+  --packet-shape:      rgba(0, 140, 90, 0.70);
+  --packet-payload-bg: rgba(0, 140, 90, 0.06);
+  --packet-payload-fg: #003322;
+  --transform-bg:      rgba(240, 248, 244, 0.96);
+  --transform-fg:      #1a3a2a;
+  --transform-border:  rgba(0, 140, 90, 0.20);
+  --popout-key:        rgba(0, 0, 0, 0.40);
+  --popout-obj:        rgba(0, 0, 0, 0.35);
+}
+
 html, body, #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
   font-family: system-ui, -apple-system, sans-serif;
 }

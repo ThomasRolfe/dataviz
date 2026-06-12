@@ -1,7 +1,16 @@
 import * as THREE from 'three'
+import { THEME_COLORS } from '@/scene/ThemeColors'
+import type { Theme } from '@/scene/ThemeColors'
 
-export function setupLighting(scene: THREE.Scene): void {
-  const ambient = new THREE.AmbientLight(0xffeedd, 0.6)
+export interface SceneLights {
+  ambient: THREE.AmbientLight
+  fill:    THREE.DirectionalLight
+}
+
+export function setupLighting(scene: THREE.Scene): SceneLights {
+  const c = THEME_COLORS['dark']
+
+  const ambient = new THREE.AmbientLight(c.ambientColor, c.ambientIntensity)
   scene.add(ambient)
 
   const key = new THREE.DirectionalLight(0xffffff, 1.2)
@@ -16,7 +25,17 @@ export function setupLighting(scene: THREE.Scene): void {
   key.shadow.camera.bottom = -40
   scene.add(key)
 
-  const fill = new THREE.DirectionalLight(0xaaccff, 0.4)
+  const fill = new THREE.DirectionalLight(c.fillColor, c.fillIntensity)
   fill.position.set(10, 10, -10)
   scene.add(fill)
+
+  return { ambient, fill }
+}
+
+export function updateLighting(lights: SceneLights, theme: Theme): void {
+  const c = THEME_COLORS[theme]
+  lights.ambient.color.setHex(c.ambientColor)
+  lights.ambient.intensity = c.ambientIntensity
+  lights.fill.color.setHex(c.fillColor)
+  lights.fill.intensity = c.fillIntensity
 }
