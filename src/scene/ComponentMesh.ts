@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import * as TWEEN from '@tweenjs/tween.js'
 import type { InternalComponent } from '@/types/internal'
 import type { ComponentType } from '@/types/schema'
-import { buildShapeMeshes } from '@/scene/componentShapes'
+import { buildShapeMeshes } from '@/scene/shapeRegistry'
 import type { ComponentMeshUserData } from '@/scene/meshUserData'
 
 export type MeshState = 'idle' | 'highlighted' | 'dimmed'

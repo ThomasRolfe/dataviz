@@ -7,8 +7,8 @@ export interface SceneLights {
   fill:    THREE.DirectionalLight
 }
 
-export function setupLighting(scene: THREE.Scene): SceneLights {
-  const c = THEME_COLORS['dark']
+export function setupLighting(scene: THREE.Scene, theme: Theme = 'light'): SceneLights {
+  const c = THEME_COLORS[theme]
 
   const ambient = new THREE.AmbientLight(c.ambientColor, c.ambientIntensity)
   scene.add(ambient)

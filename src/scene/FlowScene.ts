@@ -56,7 +56,7 @@ export class FlowScene extends SceneManager {
     super(canvas)
     this.graph = graph
 
-    this.lights = setupLighting(this.scene)
+    this.lights = setupLighting(this.scene, this.currentTheme)
 
     // Build scene objects — pass theme so grid uses correct colors from first frame
     this.grid = new GridFloor(this.scene, graph, this.currentTheme)
@@ -105,6 +105,9 @@ export class FlowScene extends SceneManager {
     this.camera.top    =  frustumNeeded
     this.camera.bottom = -frustumNeeded
     this.camera.updateProjectionMatrix()
+
+    // Apply initial theme to renderer before the first frame is drawn
+    this.renderer.setClearColor(THEME_COLORS[this.currentTheme].clearColor)
 
     canvas.addEventListener('wheel',        this.onWheel,       { passive: false })
     canvas.addEventListener('pointerdown',  this.onPointerDown)
@@ -256,6 +259,7 @@ export class FlowScene extends SceneManager {
         packetData:  def.data,
       }
       Object.assign(packet.mesh.userData, ud)
+      if (def.arrivalStyle) packet.setArrivalStyle(def.arrivalStyle)
       this.hoverSystem.addTarget(packet.mesh)
       this.activePackets.push(packet)
       this.packetPipeMap.set(packet, def.connection)

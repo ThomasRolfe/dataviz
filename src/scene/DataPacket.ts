@@ -1,60 +1,49 @@
 import * as THREE from 'three'
-import type { PacketShape } from '@/types/schema'
+import * as TWEEN from '@tweenjs/tween.js'
+import type { PacketShape, ArrivalStyle } from '@/types/schema'
+import { buildPacketGeometry } from '@/scene/shapeRegistry'
 import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
 
-function buildPacketMesh(shape: PacketShape, color: number): THREE.Mesh {
-  let geometry: THREE.BufferGeometry
-
-  switch (shape) {
-    case 'sphere':
-      geometry = new THREE.SphereGeometry(0.35, 16, 8)
-      break
-    case 'document':
-      geometry = new THREE.BoxGeometry(0.65, 0.45, 0.12)
-      break
-    case 'token':
-      geometry = new THREE.CylinderGeometry(0.28, 0.28, 0.09, 16)
-      break
-    case 'blob': {
-      const blobGeo = new THREE.SphereGeometry(0.38, 8, 6)
-      blobGeo.scale(1.0, 0.7, 0.9)
-      geometry = blobGeo
-      break
-    }
-    case 'envelope':
-      geometry = new THREE.BoxGeometry(0.60, 0.42, 0.09)
-      break
-  }
-
-  return new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({
-      color,
-      emissive:          new THREE.Color(color),
-      emissiveIntensity: 1.5,
-      metalness:         0.2,
-      roughness:         0.1,
-    })
-  )
+const ARRIVAL_COLORS: Record<ArrivalStyle, number> = {
+  error:   0xff4444,
+  success: 0x44ee88,
+  warning: 0xffaa22,
 }
 
 export class DataPacket {
   mesh:         THREE.Mesh
   arrived:      boolean = false
-  private curve:     THREE.CatmullRomCurve3 | null = null
-  private startTime: number = -1
-  private duration:  number = 0
-  private onDone:    (() => void) | null = null
+  private curve:        THREE.CatmullRomCurve3 | null = null
+  private startTime:    number = -1
+  private duration:     number = 0
+  private onDone:       (() => void) | null = null
+  private arrivalColor: number | null = null
 
   constructor(scene: THREE.Scene, shape: PacketShape, theme: Theme = 'dark') {
-    this.mesh = buildPacketMesh(shape, THEME_COLORS[theme].packetColor)
+    const color = THEME_COLORS[theme].packetColor
+    this.mesh = new THREE.Mesh(
+      buildPacketGeometry(shape),
+      new THREE.MeshStandardMaterial({
+        color,
+        emissive:          new THREE.Color(color),
+        emissiveIntensity: 1.5,
+        metalness:         0.2,
+        roughness:         0.1,
+      })
+    )
     scene.add(this.mesh)
   }
 
+  setArrivalStyle(style: ArrivalStyle): void {
+    this.arrivalColor = ARRIVAL_COLORS[style]
+  }
+
   setTheme(theme: Theme): void {
+    // Don't override arrival color once packet has landed
+    if (this.arrived && this.arrivalColor !== null) return
     const color = THEME_COLORS[theme].packetColor
-    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    const mat   = this.mesh.material as THREE.MeshStandardMaterial
     mat.color.setHex(color)
     mat.emissive.setHex(color)
   }
@@ -68,14 +57,12 @@ export class DataPacket {
     return new Promise(resolve => { this.onDone = resolve })
   }
 
-  // Called every frame from FlowScene.onFrame. No-op once arrived.
   update(now: number): void {
     if (!this.curve || this.startTime < 0 || this.arrived) return
 
     const elapsed = now - this.startTime
     const raw     = Math.min(elapsed / this.duration, 1)
-    // Quadratic ease-in-out
-    const t = raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw
+    const t       = raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw
 
     const pos = this.curve.getPointAt(t)
     this.mesh.position.copy(pos)
@@ -90,6 +77,18 @@ export class DataPacket {
 
     if (raw >= 1) {
       this.arrived = true
+      if (this.arrivalColor !== null) {
+        const mat    = this.mesh.material as THREE.MeshStandardMaterial
+        const target = new THREE.Color(this.arrivalColor)
+        new TWEEN.Tween({ r: mat.color.r, g: mat.color.g, b: mat.color.b })
+          .to({ r: target.r, g: target.g, b: target.b }, 400)
+          .easing(TWEEN.Easing.Quadratic.Out)
+          .onUpdate(({ r, g, b }) => {
+            mat.color.setRGB(r, g, b)
+            mat.emissive.setRGB(r * 0.6, g * 0.6, b * 0.6)
+          })
+          .start()
+      }
       this.onDone?.()
     }
   }

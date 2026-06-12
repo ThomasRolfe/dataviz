@@ -26,11 +26,12 @@ function assertObject(val: unknown, field: string): Record<string, unknown> {
   return val as Record<string, unknown>
 }
 
-const VALID_COMPONENT_TYPES  = new Set(['client', 'service', 'database', 'queue', 'function', 'external'])
-const VALID_COMPONENT_SHAPES = new Set(['stack', 'cloud', 'server', 'desktop', 'smartphone', 'router', 'deskphone', 'wall'])
-const VALID_PACKET_SHAPES    = new Set(['sphere', 'document', 'token', 'blob', 'envelope'])
+const VALID_COMPONENT_TYPES   = new Set(['client', 'service', 'database', 'queue', 'function', 'external'])
+const VALID_COMPONENT_SHAPES  = new Set(['stack', 'cloud', 'server', 'desktop', 'smartphone', 'router', 'deskphone', 'wall'])
+const VALID_PACKET_SHAPES     = new Set(['sphere', 'document', 'token', 'blob', 'envelope'])
 const VALID_ANNOTATION_TYPES  = new Set(['callout', 'transform'])
 const VALID_ANNOTATION_STYLES = new Set(['info', 'success', 'warning', 'error'])
+const VALID_ARRIVAL_STYLES    = new Set(['error', 'success', 'warning'])
 
 export function validateFlow(raw: unknown): FlowDefinition {
   const r = assertObject(raw, 'root')
@@ -118,6 +119,10 @@ export function validateFlow(raw: unknown): FlowDefinition {
       if (!connectionIds.has(connId)) throw new Error(`packet.connection references unknown connection: ${connId}`)
       const shape = assertString(packet['shape'], 'packet.shape')
       if (!VALID_PACKET_SHAPES.has(shape)) throw new Error(`Invalid packet shape: ${shape}`)
+      if (packet['arrivalStyle'] !== undefined) {
+        const as_ = assertString(packet['arrivalStyle'], 'packet.arrivalStyle')
+        if (!VALID_ARRIVAL_STYLES.has(as_)) throw new Error(`Invalid packet arrivalStyle: ${as_}`)
+      }
     }
     if (step['packets'] !== undefined) {
       const packets = assertArray(step['packets'], 'step.packets')
@@ -127,6 +132,10 @@ export function validateFlow(raw: unknown): FlowDefinition {
         if (!connectionIds.has(connId)) throw new Error(`packets[].connection references unknown connection: ${connId}`)
         const shape  = assertString(pkt['shape'], 'packets[].shape')
         if (!VALID_PACKET_SHAPES.has(shape)) throw new Error(`Invalid packet shape in packets[]: ${shape}`)
+        if (pkt['arrivalStyle'] !== undefined) {
+          const as_ = assertString(pkt['arrivalStyle'], 'packets[].arrivalStyle')
+          if (!VALID_ARRIVAL_STYLES.has(as_)) throw new Error(`Invalid packets[].arrivalStyle: ${as_}`)
+        }
       }
     }
   }

@@ -79,10 +79,14 @@ function App() {
     })
   }, [engine])
 
+  // Keep the HTML data-theme attribute in sync with React state
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+  }, [theme])
+
   const handleThemeToggle = useCallback(() => {
     const next: Theme = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
-    document.documentElement.dataset.theme = next
     sceneRef.current?.setTheme(next)
   }, [theme])
 

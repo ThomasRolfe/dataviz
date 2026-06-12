@@ -206,6 +206,50 @@ describe('validateFlow()', () => {
     ]
     expect(() => validateFlow(flow)).toThrow(/Invalid packet shape/)
   })
+
+  it('accepts all valid arrivalStyle values on packet', () => {
+    const styles = ['error', 'success', 'warning'] as const
+    for (const arrivalStyle of styles) {
+      const flow = clone(minimalFlow()) as Record<string, unknown>
+      ;(flow['steps'] as Record<string, unknown>[])[0]['packet'] = {
+        connection: 'c_ab', shape: 'sphere', arrivalStyle,
+      }
+      expect(() => validateFlow(flow), `arrivalStyle: ${arrivalStyle}`).not.toThrow()
+    }
+  })
+
+  it('accepts packet without arrivalStyle', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['packet'] = {
+      connection: 'c_ab', shape: 'sphere',
+    }
+    expect(() => validateFlow(flow)).not.toThrow()
+  })
+
+  it('throws on an invalid arrivalStyle on packet', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['packet'] = {
+      connection: 'c_ab', shape: 'sphere', arrivalStyle: 'info',
+    }
+    expect(() => validateFlow(flow)).toThrow(/Invalid packet arrivalStyle/)
+  })
+
+  it('accepts arrivalStyle on packets[] items', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['packets'] = [
+      { connection: 'c_ab', shape: 'sphere', arrivalStyle: 'error' },
+      { connection: 'c_ab', shape: 'token',  arrivalStyle: 'success' },
+    ]
+    expect(() => validateFlow(flow)).not.toThrow()
+  })
+
+  it('throws on an invalid arrivalStyle in packets[]', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['packets'] = [
+      { connection: 'c_ab', shape: 'sphere', arrivalStyle: 'critical' },
+    ]
+    expect(() => validateFlow(flow)).toThrow(/Invalid packets\[\]\.arrivalStyle/)
+  })
 })
 
 // ── buildGraph() ─────────────────────────────────────────────────────────────
