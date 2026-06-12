@@ -26,7 +26,7 @@ export class FlowScene extends SceneManager {
   private zones:          ZoneRenderer[]
   private grid:           GridFloor
   private lights:         SceneLights
-  private currentTheme:   Theme = 'dark'
+  private currentTheme:   Theme = 'light'
   private activePacket:    DataPacket | null = null
   private penetratedIds:  Set<string> = new Set()
   private hoverSystem:     HoverSystem
