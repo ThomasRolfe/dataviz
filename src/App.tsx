@@ -33,7 +33,7 @@ function App() {
   const [steps, setSteps]   = useState<Step[]>([])
   const [error, setError]   = useState<string | null>(null)
   const [bridge, setBridge] = useState<OverlayBridge | null>(null)
-  const [theme, setTheme]   = useState<Theme>('dark')
+  const [theme, setTheme]   = useState<Theme>('light')
   const [zoneLabelData, setZoneLabelData] = useState<
     Array<{ label: string; position: Vector3; color: string }>
   >([])
