@@ -94,6 +94,7 @@
       "label": "Kinesis Firehose",
       "type": "external",
       "logo": "aws",
+      "color": "#ffba3b",
       "position": { "col": 12, "row": 3 },
       "meta": {
         "description": "AWS Kinesis Data Firehose in us-east-1. Receives Tenant D's telemetry and delivers it to their dedicated S3 + Athena stack.",
@@ -102,12 +103,51 @@
     }
   ],
   "connections": [
-    { "id": "conn_a",   "from": "tenant_a",  "to": "collector",      "label": "OTLP/gRPC",           "route": "auto" },
-    { "id": "conn_b",   "from": "tenant_b",  "to": "collector",      "label": "OTLP/gRPC",           "route": "auto" },
-    { "id": "conn_c",   "from": "tenant_c",  "to": "collector",      "label": "OTLP/gRPC",           "route": "auto" },
-    { "id": "conn_d",   "from": "tenant_d",  "to": "collector",      "label": "OTLP/gRPC",           "route": "auto" },
-    { "id": "conn_fwd", "from": "collector", "to": "observability",  "label": "batch export",         "route": "auto" },
-    { "id": "conn_ext", "from": "collector", "to": "external_cloud", "label": "cross-region forward", "route": [{"col": 6, "row": 1}, {"col": 12, "row": 1}] }
+    {
+      "id": "conn_a",
+      "from": "tenant_a",
+      "to": "collector",
+      "label": "OTLP/gRPC",
+      "route": "auto"
+    },
+    {
+      "id": "conn_b",
+      "from": "tenant_b",
+      "to": "collector",
+      "label": "OTLP/gRPC",
+      "route": "auto"
+    },
+    {
+      "id": "conn_c",
+      "from": "tenant_c",
+      "to": "collector",
+      "label": "OTLP/gRPC",
+      "route": "auto"
+    },
+    {
+      "id": "conn_d",
+      "from": "tenant_d",
+      "to": "collector",
+      "label": "OTLP/gRPC",
+      "route": "auto"
+    },
+    {
+      "id": "conn_fwd",
+      "from": "collector",
+      "to": "observability",
+      "label": "batch export",
+      "route": "auto"
+    },
+    {
+      "id": "conn_ext",
+      "from": "collector",
+      "to": "external_cloud",
+      "label": "cross-region forward",
+      "route": [
+        { "col": 6, "row": 1 },
+        { "col": 12, "row": 1 }
+      ]
+    }
   ],
   "steps": [
     {
@@ -144,7 +184,11 @@
           "tenant": "tenant-a",
           "signal": "metric",
           "name": "checkout.latency_ms",
-          "tags": { "env": "prod", "service": "checkout", "region": "euwest-1" },
+          "tags": {
+            "env": "prod",
+            "service": "checkout",
+            "region": "euwest-1"
+          },
           "decision": "ACCEPTED",
           "destination": "observability",
           "sample_rate": "100%"
@@ -206,7 +250,11 @@
           "signal": "trace_span",
           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
           "span_name": "POST /api/v2/order",
-          "tags": { "env": "prod", "service": "orders", "http.status_code": "200" },
+          "tags": {
+            "env": "prod",
+            "service": "orders",
+            "http.status_code": "200"
+          },
           "decision": "ACCEPTED",
           "destination": "observability",
           "sample_rate": "10%"
@@ -298,7 +346,11 @@
           "tenant": "tenant-d",
           "signal": "metric",
           "name": "payments.processed_total",
-          "tags": { "env": "prod", "service": "billing", "data_residency": "us-east-1" },
+          "tags": {
+            "env": "prod",
+            "service": "billing",
+            "data_residency": "us-east-1"
+          },
           "decision": "ACCEPTED",
           "destination": "external_cloud",
           "routing_rule": "data_residency=us-east-1"
