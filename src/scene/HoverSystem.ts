@@ -64,6 +64,10 @@ export class HoverSystem {
     if (idx !== -1) this.targets.splice(idx, 1)
   }
 
+  setOnHoverChange(fn: (id: string | null) => void): void {
+    this.onHoverChange = fn
+  }
+
   dispose(): void {
     this.canvas.removeEventListener('mousemove', this.onMouseMove)
   }

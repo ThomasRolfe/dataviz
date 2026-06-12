@@ -13,11 +13,20 @@ import { setupLighting, updateLighting } from '@/scene/LightingSetup'
 import type { SceneLights } from '@/scene/LightingSetup'
 import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
+import type { PacketMeshUserData } from '@/scene/meshUserData'
 import type { InternalGraph } from '@/types/internal'
 import type { Step } from '@/types/schema'
 import { CELL_SIZE } from '@/engine/layoutEngine'
 
-const PACKET_TRAVEL_MS = 2000
+const PACKET_TRAVEL_MS    = 2000
+const CAMERA_HEIGHT       = 50
+const PHASE_MATERIAL_RATIO = 0.4
+const PHASE_CAMERA_RATIO   = 0.3
+const WHEEL_ZOOM_IN        = 0.89
+const WHEEL_ZOOM_OUT       = 1.12
+const FRUSTUM_MIN_RATIO    = 0.25
+const FRUSTUM_MAX_RATIO    = 2.5
+const PIPE_DIM_DELAY_MS    = 600
 
 export class FlowScene extends SceneManager {
   private graph:          InternalGraph
@@ -31,13 +40,14 @@ export class FlowScene extends SceneManager {
   private packetPipeMap:   Map<DataPacket, string> = new Map()
   private arrivedPackets:  Set<DataPacket> = new Set()
   private penetratedIds:   Set<string> = new Set()
-  private hoverSystem:            HoverSystem
-  private packetArrivalCallback:  ((targetId: string) => void) | null = null
-  private overviewTarget:         THREE.Vector3
+  private hoverSystem:     HoverSystem
+  private overviewTarget:  THREE.Vector3
   private overviewFrustum: number
   private isPanning:       boolean = false
   private panLast:         THREE.Vector2 = new THREE.Vector2()
   private cameraTween:     TWEEN.Tween<{ tx: number; tz: number; f: number }> | null = null
+  private pendingCamera:   { target: THREE.Vector3; frustum: number; durationMs: number } | null = null
+  private packetArrivalCallback: ((targetId: string) => void) | null = null
   cameraTarget:   THREE.Vector3
   currentFrustum: number
   overlayBridge:  OverlayBridge
@@ -48,8 +58,8 @@ export class FlowScene extends SceneManager {
 
     this.lights = setupLighting(this.scene)
 
-    // Build scene objects
-    this.grid = new GridFloor(this.scene, graph)
+    // Build scene objects — pass theme so grid uses correct colors from first frame
+    this.grid = new GridFloor(this.scene, graph, this.currentTheme)
 
     this.zones = graph.zones.map(z => new ZoneRenderer(this.scene, z))
 
@@ -66,10 +76,10 @@ export class FlowScene extends SceneManager {
     // Overlay bridge
     this.overlayBridge = new OverlayBridge(this.camera, this.renderer)
 
-    // Hover system
+    // Hover system — components register directly via addTarget
     this.hoverSystem = new HoverSystem(canvas, this.camera, () => {})
     for (const cm of this.components.values()) {
-      cm.addToRaycastTargets(this.hoverSystem['targets'])
+      this.hoverSystem.addTarget(cm.hitMesh)
     }
 
     // Compute overview camera
@@ -87,7 +97,7 @@ export class FlowScene extends SceneManager {
 
     // Position camera at overview
     const t = this.overviewTarget
-    this.camera.position.set(t.x + 50, 50, t.z + 50)
+    this.camera.position.set(t.x + CAMERA_HEIGHT, CAMERA_HEIGHT, t.z + CAMERA_HEIGHT)
     this.camera.lookAt(t)
     const aspect = canvas.clientWidth / canvas.clientHeight || 1
     this.camera.left   = -frustumNeeded * aspect
@@ -108,10 +118,10 @@ export class FlowScene extends SceneManager {
 
   private onWheel = (e: WheelEvent): void => {
     e.preventDefault()
-    const factor = e.deltaY > 0 ? 1.12 : 0.89
+    const factor = e.deltaY > 0 ? WHEEL_ZOOM_OUT : WHEEL_ZOOM_IN
     const next = Math.min(
-      Math.max(this.currentFrustum * factor, this.overviewFrustum * 0.25),
-      this.overviewFrustum * 2.5
+      Math.max(this.currentFrustum * factor, this.overviewFrustum * FRUSTUM_MIN_RATIO),
+      this.overviewFrustum * FRUSTUM_MAX_RATIO
     )
     this.currentFrustum = next
     const aspect = this.renderer.domElement.clientWidth / this.renderer.domElement.clientHeight || 1
@@ -161,6 +171,12 @@ export class FlowScene extends SceneManager {
   private onPointerUp = (): void => {
     this.isPanning = false
     this.renderer.domElement.style.cursor = 'grab'
+    // Apply any camera animation that was requested while the user was panning
+    if (this.pendingCamera) {
+      const { target, frustum, durationMs } = this.pendingCamera
+      this.pendingCamera = null
+      this.tweenCameraTo(target, frustum, durationMs)
+    }
   }
 
   private onContextMenu = (e: Event): void => {
@@ -168,7 +184,7 @@ export class FlowScene extends SceneManager {
   }
 
   setHoverCallback(fn: (id: string | null) => void): void {
-    this.hoverSystem['onHoverChange'] = fn
+    this.hoverSystem.setOnHoverChange(fn)
   }
 
   setPacketArrivalCallback(fn: (targetId: string) => void): void {
@@ -185,12 +201,12 @@ export class FlowScene extends SceneManager {
   }
 
   applyStep(step: Step, _prevStep: Step | null, durationMs: number): void {
-    const PHASE_MATERIAL = durationMs * 0.4
-    const PHASE_CAMERA   = durationMs * 0.3
+    const phaseMaterial = durationMs * PHASE_MATERIAL_RATIO
+    const phaseCamera   = durationMs * PHASE_CAMERA_RATIO
 
     // 1. Dispose all active packets, clear traversal state, clear penetration
     for (const [, pipeId] of this.packetPipeMap) {
-      this.pipes.get(pipeId)?.setPacketTraversing(false, PHASE_MATERIAL)
+      this.pipes.get(pipeId)?.setPacketTraversing(false, phaseMaterial)
     }
     for (const packet of this.activePackets) {
       this.hoverSystem.removeTarget(packet.mesh)
@@ -211,17 +227,17 @@ export class FlowScene extends SceneManager {
         : step.highlight.length > 0
           ? 'dimmed'
           : 'idle'
-      mesh.transitionTo(state, PHASE_MATERIAL)
+      mesh.transitionTo(state, phaseMaterial)
     }
 
     // 3. Transition pipe materials (active_connections → medium brightness)
     for (const [id, pipe] of this.pipes) {
       const active = step.active_connections.includes(id)
-      pipe.setActive(active, PHASE_MATERIAL)
+      pipe.setActive(active, phaseMaterial)
     }
 
     // 4. Animate camera
-    this.animateCamera(step.camera, PHASE_CAMERA)
+    this.animateCamera(step.camera, phaseCamera)
 
     // 5. Launch all packets — each pipe flares to full brightness while a packet is on it
     const packetDefs = [
@@ -233,10 +249,13 @@ export class FlowScene extends SceneManager {
       if (!pipe) return
       const conn   = this.graph.connections.get(def.connection)
       const packet = new DataPacket(this.scene, def.shape, this.currentTheme)
-      packet.mesh.userData.componentId = `__packet__${i}`
-      packet.mesh.userData.packetData  = def.data
-      packet.mesh.userData.packetLabel = conn?.label ?? def.connection
-      packet.mesh.userData.packetShape = def.shape
+      const ud: PacketMeshUserData = {
+        componentId: `__packet__${i}`,
+        packetLabel: conn?.label ?? def.connection,
+        packetShape: def.shape,
+        packetData:  def.data,
+      }
+      Object.assign(packet.mesh.userData, ud)
       this.hoverSystem.addTarget(packet.mesh)
       this.activePackets.push(packet)
       this.packetPipeMap.set(packet, def.connection)
@@ -270,6 +289,12 @@ export class FlowScene extends SceneManager {
   }
 
   private tweenCameraTo(target: THREE.Vector3, frustum: number, durationMs: number): void {
+    // Don't interrupt while the user is panning — queue it for when they lift
+    if (this.isPanning) {
+      this.pendingCamera = { target: target.clone(), frustum, durationMs }
+      return
+    }
+    this.pendingCamera = null
     this.cameraTween?.stop()
     const aspect = this.renderer.domElement.clientWidth / this.renderer.domElement.clientHeight || 1
 
@@ -284,7 +309,7 @@ export class FlowScene extends SceneManager {
         this.cameraTarget.set(tx, 0, tz)
         this.currentFrustum = f
 
-        this.camera.position.set(tx + 50, 50, tz + 50)
+        this.camera.position.set(tx + CAMERA_HEIGHT, CAMERA_HEIGHT, tz + CAMERA_HEIGHT)
         this.camera.lookAt(this.cameraTarget)
 
         this.camera.left   = -f * aspect
@@ -303,7 +328,7 @@ export class FlowScene extends SceneManager {
     this.camera.right  =  this.currentFrustum * aspect
     this.camera.top    =  this.currentFrustum
     this.camera.bottom = -this.currentFrustum
-    this.camera.position.set(this.cameraTarget.x + 50, 50, this.cameraTarget.z + 50)
+    this.camera.position.set(this.cameraTarget.x + CAMERA_HEIGHT, CAMERA_HEIGHT, this.cameraTarget.z + CAMERA_HEIGHT)
     this.camera.lookAt(this.cameraTarget)
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(width, height, false)
@@ -346,7 +371,7 @@ export class FlowScene extends SceneManager {
           const stillTraveling = this.activePackets.some(
             p => !p.arrived && this.packetPipeMap.get(p) === pipeId
           )
-          if (!stillTraveling) this.pipes.get(pipeId)?.setPacketTraversing(false, 600)
+          if (!stillTraveling) this.pipes.get(pipeId)?.setPacketTraversing(false, PIPE_DIM_DELAY_MS)
 
           const destId = this.graph.connections.get(pipeId)?.to.id
           if (destId) this.packetArrivalCallback?.(destId)

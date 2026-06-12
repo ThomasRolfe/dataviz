@@ -10,7 +10,7 @@ export class GridFloor {
   private divisions: number
   private center:    THREE.Vector3
 
-  constructor(scene: THREE.Scene, graph: InternalGraph) {
+  constructor(scene: THREE.Scene, graph: InternalGraph, theme: Theme = 'light') {
     const { minX, maxX, minZ, maxZ } = graph.gridBounds
     const sizeX = maxX - minX
     const sizeZ = maxZ - minZ
@@ -18,7 +18,7 @@ export class GridFloor {
     this.divisions = Math.round(this.size / CELL_SIZE)
     this.center    = new THREE.Vector3((minX + maxX) / 2, -0.15, (minZ + maxZ) / 2)
 
-    const { gridPrimary, gridSecondary } = THEME_COLORS['dark']
+    const { gridPrimary, gridSecondary } = THEME_COLORS[theme]
     this.mesh = new THREE.GridHelper(this.size, this.divisions, gridPrimary, gridSecondary)
     this.mesh.position.copy(this.center)
     scene.add(this.mesh)

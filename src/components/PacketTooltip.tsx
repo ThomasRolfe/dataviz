@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import ReactDOM from 'react-dom'
 import type { FlowScene } from '@/scene/FlowScene'
 import type { OverlayBridge } from '@/scene/OverlayBridge'
+import type { PacketMeshUserData } from '@/scene/meshUserData'
 import { useAnimationFrame } from '@/hooks/useAnimationFrame'
 import styles from '@/styles/PacketTooltip.module.css'
 
@@ -21,17 +22,16 @@ export function PacketTooltip({ scene, bridge, hoveredId }: PacketTooltipProps) 
     const mesh = scene.getPacketMesh(hoveredId)
     if (!divRef.current || !mesh) return
 
-    const label = mesh.userData.packetLabel as string | undefined
-    const shape = mesh.userData.packetShape as string | undefined
-    const data  = mesh.userData.packetData  as Record<string, unknown> | undefined
-
-    if (labelRef.current) labelRef.current.textContent = label ?? ''
-    if (shapeRef.current) shapeRef.current.textContent = shape ?? ''
-    if (dataRef.current)  dataRef.current.textContent  = data ? JSON.stringify(data, null, 2) : '(no payload)'
+    const ud = mesh.userData as PacketMeshUserData
+    if (labelRef.current) labelRef.current.textContent = ud.packetLabel
+    if (shapeRef.current) shapeRef.current.textContent = ud.packetShape
+    if (dataRef.current)  dataRef.current.textContent  = ud.packetData
+      ? JSON.stringify(ud.packetData, null, 2)
+      : '(no payload)'
 
     const pos = bridge.worldToScreen(mesh.position)
     divRef.current.style.transform = `translate(calc(${pos.x}px - 50%), calc(${pos.y}px - 100% - 16px))`
-  }, [scene, bridge])
+  }, [scene, bridge, hoveredId])
 
   const overlayRoot = document.getElementById('overlay-root')
   if (!overlayRoot) return null
