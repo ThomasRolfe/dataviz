@@ -14,7 +14,7 @@ const OPACITY_TRAVERSING = 1.00
 
 export class ConnectionPipe {
   mesh:     THREE.Mesh
-  curve:    THREE.CatmullRomCurve3
+  curve:    THREE.Curve<THREE.Vector3>
   id:       string
   midpoint: THREE.Vector3
 

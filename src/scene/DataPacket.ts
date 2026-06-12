@@ -14,7 +14,7 @@ const ARRIVAL_COLORS: Record<ArrivalStyle, number> = {
 export class DataPacket {
   mesh:         THREE.Mesh
   arrived:      boolean = false
-  private curve:        THREE.CatmullRomCurve3 | null = null
+  private curve:        THREE.Curve<THREE.Vector3> | null = null
   private startTime:    number = -1
   private duration:     number = 0
   private onDone:       (() => void) | null = null
@@ -48,7 +48,7 @@ export class DataPacket {
     mat.emissive.setHex(color)
   }
 
-  travel(curve: THREE.CatmullRomCurve3, durationMs: number): Promise<void> {
+  travel(curve: THREE.Curve<THREE.Vector3>, durationMs: number): Promise<void> {
     this.curve     = curve
     this.duration  = durationMs
     this.startTime = performance.now()

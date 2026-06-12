@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { validateFlow, buildGraph, PIPE_HEIGHT } from '@/engine/parseFlow'
 import { CELL_SIZE } from '@/engine/layoutEngine'
 import type { FlowDefinition } from '@/types/schema'
+import * as THREE from 'three'
 
 // ── fixture helpers ──────────────────────────────────────────────────────────
 
@@ -344,6 +345,6 @@ describe('buildGraph()', () => {
     })
     expect(() => buildGraph(flow)).not.toThrow()
     const conn = buildGraph(flow).connections.get('c_ab')!
-    expect(conn.curve.points.length).toBe(3) // start + 1 waypoint + end
+    expect((conn.curve as THREE.CatmullRomCurve3).points.length).toBe(3) // start + 1 waypoint + end
   })
 })

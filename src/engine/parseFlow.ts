@@ -143,18 +143,24 @@ export function validateFlow(raw: unknown): FlowDefinition {
   return raw as FlowDefinition
 }
 
-function autoRoute(from: InternalComponent, to: InternalComponent): THREE.CatmullRomCurve3 {
-  const start = from.center.clone().setY(PIPE_HEIGHT)
-  const end   = to.center.clone().setY(PIPE_HEIGHT)
-  const mid   = new THREE.Vector3(end.x, PIPE_HEIGHT, start.z)
-  return new THREE.CatmullRomCurve3([start, mid, end])
+function autoRoute(from: InternalComponent, to: InternalComponent): THREE.CubicBezierCurve3 {
+  const h     = PIPE_HEIGHT
+  const start = from.center.clone().setY(h)
+  const end   = to.center.clone().setY(h)
+  const dx    = end.x - start.x
+  const dz    = end.z - start.z
+  // Exit start along X, arrive at end along Z — smooth orthogonal S-curve that
+  // avoids the diagonal kink produced by CatmullRom through a 90° corner point.
+  const cp1 = new THREE.Vector3(start.x + dx * 0.5, h, start.z)
+  const cp2 = new THREE.Vector3(end.x, h, end.z - dz * 0.5)
+  return new THREE.CubicBezierCurve3(start, cp1, cp2, end)
 }
 
 function bakeRoute(
   from: InternalComponent,
   to: InternalComponent,
   connection: Connection,
-): THREE.CatmullRomCurve3 {
+): THREE.Curve<THREE.Vector3> {
   if (connection.route === 'auto') {
     return autoRoute(from, to)
   } else {

@@ -24,7 +24,7 @@ export interface InternalConnection {
   from: InternalComponent
   to: InternalComponent
   label?: string
-  curve: THREE.CatmullRomCurve3
+  curve: THREE.Curve<THREE.Vector3>
   tubePoints: THREE.Vector3[]
 }
 
