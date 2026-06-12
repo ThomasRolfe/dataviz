@@ -1,10 +1,11 @@
 import * as THREE from 'three'
-import type { ComponentType, Step } from './schema'
+import type { ComponentType, ComponentShape, Step } from './schema'
 
 export interface InternalComponent {
   id: string
   label: string
   type: ComponentType
+  shape?: ComponentShape
   center: THREE.Vector3
   meshSize: THREE.Vector3
   topCenter: THREE.Vector3
