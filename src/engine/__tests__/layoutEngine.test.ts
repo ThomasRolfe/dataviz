@@ -1,0 +1,109 @@
+import { describe, it, expect } from 'vitest'
+import {
+  gridToWorld,
+  componentCenter,
+  componentMeshSize,
+  CELL_SIZE,
+  ELEVATION_UNIT,
+  COMPONENT_GAP,
+  COMPONENT_HEIGHT,
+} from '@/engine/layoutEngine'
+import type { Component } from '@/types/schema'
+
+function component(overrides: Partial<Component> = {}): Component {
+  return {
+    id: 'x',
+    label: 'X',
+    type: 'service',
+    position: { col: 0, row: 0 },
+    ...overrides,
+  }
+}
+
+// ── gridToWorld() ────────────────────────────────────────────────────────────
+
+describe('gridToWorld()', () => {
+  it('maps (0, 0) to the origin', () => {
+    const v = gridToWorld(0, 0)
+    expect(v.x).toBe(0)
+    expect(v.y).toBe(0)
+    expect(v.z).toBe(0)
+  })
+
+  it('scales col by CELL_SIZE into x', () => {
+    expect(gridToWorld(3, 0).x).toBe(3 * CELL_SIZE)
+  })
+
+  it('scales row by CELL_SIZE into z', () => {
+    expect(gridToWorld(0, 5).z).toBe(5 * CELL_SIZE)
+  })
+
+  it('applies elevation via ELEVATION_UNIT into y', () => {
+    expect(gridToWorld(0, 0, 2).y).toBe(2 * ELEVATION_UNIT)
+  })
+
+  it('defaults elevation to 0', () => {
+    expect(gridToWorld(1, 1).y).toBe(0)
+  })
+})
+
+// ── componentCenter() ────────────────────────────────────────────────────────
+
+describe('componentCenter()', () => {
+  it('centres a 1×1 component at (col+0.5, 0, row+0.5) × CELL_SIZE', () => {
+    const v = componentCenter(component({ position: { col: 2, row: 3 } }))
+    expect(v.x).toBeCloseTo(2.5 * CELL_SIZE)
+    expect(v.z).toBeCloseTo(3.5 * CELL_SIZE)
+    expect(v.y).toBe(0)
+  })
+
+  it('centres a 2×1 component at (col+1, 0, row+0.5) × CELL_SIZE', () => {
+    const v = componentCenter(component({ position: { col: 4, row: 1 }, size: { w: 2, h: 1 } }))
+    expect(v.x).toBeCloseTo(5 * CELL_SIZE)
+    expect(v.z).toBeCloseTo(1.5 * CELL_SIZE)
+  })
+
+  it('centres a 1×3 component at (col+0.5, 0, row+1.5) × CELL_SIZE', () => {
+    const v = componentCenter(component({ position: { col: 0, row: 0 }, size: { w: 1, h: 3 } }))
+    expect(v.z).toBeCloseTo(1.5 * CELL_SIZE)
+  })
+
+  it('lifts centre by elevation × ELEVATION_UNIT', () => {
+    const v = componentCenter(component({ position: { col: 0, row: 0, elevation: 2 } }))
+    expect(v.y).toBe(2 * ELEVATION_UNIT)
+  })
+
+  it('defaults elevation to 0 when not specified', () => {
+    const v = componentCenter(component({ position: { col: 0, row: 0 } }))
+    expect(v.y).toBe(0)
+  })
+})
+
+// ── componentMeshSize() ──────────────────────────────────────────────────────
+
+describe('componentMeshSize()', () => {
+  it('scales width and depth by CELL_SIZE × COMPONENT_GAP', () => {
+    const v = componentMeshSize(component())
+    expect(v.x).toBeCloseTo(CELL_SIZE * COMPONENT_GAP)
+    expect(v.z).toBeCloseTo(CELL_SIZE * COMPONENT_GAP)
+  })
+
+  it('uses COMPONENT_HEIGHT for the component type', () => {
+    const types = Object.keys(COMPONENT_HEIGHT) as Array<keyof typeof COMPONENT_HEIGHT>
+    for (const type of types) {
+      const v = componentMeshSize(component({ type }))
+      expect(v.y).toBe(COMPONENT_HEIGHT[type])
+    }
+  })
+
+  it('scales a 2×1 component to double width', () => {
+    const v = componentMeshSize(component({ size: { w: 2, h: 1 } }))
+    expect(v.x).toBeCloseTo(2 * CELL_SIZE * COMPONENT_GAP)
+    expect(v.z).toBeCloseTo(1 * CELL_SIZE * COMPONENT_GAP)
+  })
+
+  it('scales a 1×3 component to triple depth', () => {
+    const v = componentMeshSize(component({ size: { w: 1, h: 3 } }))
+    expect(v.z).toBeCloseTo(3 * CELL_SIZE * COMPONENT_GAP)
+  })
+})
