@@ -8,10 +8,8 @@ type FAIconTuple = [number, number, string[], string, string | string[]]
 type FAIconEntry = { icon: FAIconTuple }
 
 const svgLoader = new SVGLoader()
-const WORLD_EXTRUDE_DEPTH = 0.08  // world-unit depth for the extrusion
 
 function resolveIcon(logoName: string): { paths: string[]; width: number; height: number } | null {
-  // "stripe" → "faStripe", "github" → "faGithub", etc.
   const key = `fa${logoName.charAt(0).toUpperCase()}${logoName.slice(1)}`
   const entry = (brandIcons as Record<string, unknown>)[key] as FAIconEntry | undefined
   if (!entry?.icon) return null
@@ -35,23 +33,20 @@ export function buildLogoMeshes(
   const svgStr  = `<svg viewBox="0 0 ${vbW} ${vbH}">${pathStrings.map(d => `<path d="${d}"/>`).join('')}</svg>`
   const { paths } = svgLoader.parse(svgStr)
 
-  // Collect all Shape objects from all SVG paths
   const allShapes: THREE.Shape[] = []
   for (const path of paths) {
     allShapes.push(...SVGLoader.createShapes(path))
   }
   if (allShapes.length === 0) return []
 
-  // Measure the SVG bounding box before scaling (need a dummy extrude)
-  const probe = new THREE.ExtrudeGeometry(allShapes[0], { depth: 1, bevelEnabled: false })
+  // Measure bounding box using ShapeGeometry (flat, no extrusion)
   const tempBox = new THREE.Box3()
   for (const shape of allShapes) {
-    const g = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false })
+    const g = new THREE.ShapeGeometry(shape)
     g.computeBoundingBox()
     if (g.boundingBox) tempBox.union(g.boundingBox)
     g.dispose()
   }
-  probe.dispose()
 
   const svgSize   = tempBox.getSize(new THREE.Vector3())
   const svgCenter = tempBox.getCenter(new THREE.Vector3())
@@ -62,25 +57,22 @@ export function buildLogoMeshes(
     (meshSize.z / COMPONENT_GAP * 0.9) / svgSize.y,
   )
 
-  // Extrusion depth in SVG units → equals WORLD_EXTRUDE_DEPTH after scaling
-  const extrudeDepthSVG = WORLD_EXTRUDE_DEPTH / uniformScale
-
-  // Combined transform: centre → scale+flipY → rotate flat into XZ plane
-  // Rx(-PI/2): (X, Y, Z) → (X, -Z, Y)
-  // With flipY on scale: SVG Y-down converts to Three.js Y-up before rotation
+  // Center → scale+flipY (SVG is Y-down) → rotate flat into XZ plane
+  // RotateX(-PI/2): (x, y, 0) → (x, 0, -y), so the shape lies flat on XZ
+  // Normals: (0,0,1) → (0,1,0) after the rotation → lit correctly from above
   const transform = new THREE.Matrix4()
     .premultiply(new THREE.Matrix4().makeTranslation(-svgCenter.x, -svgCenter.y, 0))
     .premultiply(new THREE.Matrix4().makeScale(uniformScale, -uniformScale, uniformScale))
     .premultiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2))
 
+  // The component group origin sits at world y = meshSize.y / 2.
+  // Translate the logo down so it rests at world y ≈ 0 (ground level).
+  const yOffset = -meshSize.y / 2 + 0.02
+
   return allShapes.map(shape => {
-    const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: extrudeDepthSVG,
-      bevelEnabled: false,
-    })
+    const geo = new THREE.ShapeGeometry(shape)
     geo.applyMatrix4(transform)
-    // After rotation the extrusion points downward; lift so bottom face is at Y=0
-    geo.translate(0, WORLD_EXTRUDE_DEPTH, 0)
+    geo.translate(0, yOffset, 0)
     return new THREE.Mesh(geo, mat)
   })
 }
