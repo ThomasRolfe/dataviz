@@ -86,11 +86,11 @@ export class ZoneRenderer {
     })
 
     const mesh = new THREE.Mesh(geo, mat)
-    // Sit just inside the top (near) edge of the zone, left-aligned
+    // Bottom edge of label flush with zone's top (min Z) edge — folder-tab style
     mesh.position.set(
       zone.min.x + labelW / 2 + 0.3,
       0.02,
-      zone.min.z + labelH / 2 + 0.1,
+      zone.min.z - labelH / 2,
     )
     return mesh
   }
