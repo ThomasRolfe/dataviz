@@ -215,6 +215,7 @@ state — the viewer sees the full architecture before anything happens.
 ```json
 {
   "id":                 2,
+  "name":               "Auth redirect",
   "title":              "Browser requests authorisation",
   "description":        "The app constructs the authorisation URL and redirects the user.",
   "highlight":          ["browser", "auth_server"],
@@ -240,7 +241,38 @@ state — the viewer sees the full architecture before anything happens.
 }
 ```
 
-### 8.3 `highlight`
+### 8.3 `name` — sidebar label (optional)
+
+`name` is the short label shown in the **step navigation sidebar** on the right side of the screen. Users click it to jump directly to that step.
+
+- **Optional.** If omitted the sidebar falls back to `title`.
+- **Keep it short** — 2–4 words at most. The sidebar column is narrow (≈220 px).
+  Long names wrap and make the list harder to scan.
+- `title` should still be a complete, descriptive sentence shown in the HUD.
+  `name` is the abbreviated version for quick navigation.
+
+| Field   | Where shown          | Ideal length     | Example |
+|---------|----------------------|------------------|---------|
+| `title` | Step HUD (top-left)  | Full sentence    | `"App generates PKCE params and redirects"` |
+| `name`  | Sidebar step list    | 2–4 words        | `"PKCE & redirect"` |
+
+**Good `name` values:**
+```
+"Overview"          ← step 0
+"User action"       ← first trigger
+"Send to Collector" ← data in flight
+"Validate & batch"  ← transformation step
+"Publish to Kafka"  ← next hop
+"Data at rest"      ← final state
+```
+
+**Anti-patterns to avoid:**
+- Repeating the full title: `"User clicks Sign in with Google"` — too long.
+- Generic labels: `"Step 1"`, `"Next"` — meaningless out of context.
+- Omitting `name` when `title` is long — the sidebar will show the full title,
+  which wraps and looks cluttered.
+
+### 8.4 `highlight`
 
 Array of component ids. Highlighted components appear at full brightness.
 All other components dim to 25% opacity.
@@ -251,7 +283,7 @@ All other components dim to 25% opacity.
 - If the step is a transformation inside one component, highlight only that component.
 - Empty array = all components at full brightness (use for overview step only).
 
-### 8.4 `active_connections`
+### 8.5 `active_connections`
 
 Array of connection ids. Active pipes illuminate with a brighter colour.
 
@@ -259,7 +291,7 @@ Array of connection ids. Active pipes illuminate with a brighter colour.
 - Should match the packet's `connection` when a packet is present.
 - An empty array is valid (e.g. a transformation step with no data transfer).
 
-### 8.5 `camera`
+### 8.6 `camera`
 
 Optional. Controls camera position for this step.
 
@@ -277,7 +309,7 @@ Optional. Controls camera position for this step.
 process (transformation, validation, decision). Return to overview (`focus: null`)
 for data-in-flight steps where the packet's journey across the scene is the story.
 
-### 8.6 `annotations`
+### 8.7 `annotations`
 
 Array of annotation cards. Each card floats near its target component with a
 dashed leader line. Multiple annotations fan out automatically to avoid overlap.
@@ -303,7 +335,7 @@ dashed leader line. Multiple annotations fan out automatically to avoid overlap.
 - Keep text under ~80 characters so it fits the card without wrapping excessively.
 - Use at most 2–3 annotations per step. More than that creates visual noise.
 
-### 8.7 `popouts`
+### 8.8 `popouts`
 
 Array of data popout panels. Each shows a structured key-value payload anchored
 to a component. **Currently not rendered in the UI — reserve for future use.**
@@ -323,7 +355,7 @@ to a component. **Currently not rendered in the UI — reserve for future use.**
 Include popouts for completeness in the JSON even if they are not yet displayed.
 They will be rendered in a future release.
 
-### 8.8 `packet`
+### 8.9 `packet`
 
 A glowing shape that travels along a connection pipe. Stays at the destination
 after arrival until the next step. The user can hover it to inspect the payload.
@@ -539,14 +571,14 @@ A minimal but complete example illustrating all features.
   ],
   "steps": [
     {
-      "id": 0,
+      "id": 0, "name": "Overview",
       "title": "Telemetry Pipeline Overview",
       "description": "A button click in the browser travels through a collector API and Kafka topic before landing in ClickHouse.",
       "highlight": [], "active_connections": [],
       "camera": { "focus": null }
     },
     {
-      "id": 1,
+      "id": 1, "name": "User action",
       "title": "User action fires event",
       "description": "A button click triggers analytics.track() in the browser.",
       "highlight": ["browser"], "active_connections": [],
@@ -557,7 +589,7 @@ A minimal but complete example illustrating all features.
       "popouts": [], "packet": null
     },
     {
-      "id": 2,
+      "id": 2, "name": "Send to Collector",
       "title": "Event sent to Collector",
       "description": "SDK serializes the event and POSTs it to the collector endpoint.",
       "highlight": ["browser", "collector"], "active_connections": ["c1"],
@@ -566,7 +598,7 @@ A minimal but complete example illustrating all features.
       "packet": { "connection": "c1", "shape": "document", "data": { "event": "button_click", "userId": "u_9f3a", "timestamp": 1718000000000 } }
     },
     {
-      "id": 3,
+      "id": 3, "name": "Validate & batch",
       "title": "Collector validates and batches",
       "description": "Collector checks schema, attaches server-side metadata, then produces to Kafka.",
       "highlight": ["collector"], "active_connections": [],
@@ -577,7 +609,7 @@ A minimal but complete example illustrating all features.
       "popouts": [], "packet": null
     },
     {
-      "id": 4,
+      "id": 4, "name": "Publish to Kafka",
       "title": "Event published to Kafka",
       "description": "Enriched event produced to the telemetry-events topic, keyed by userId.",
       "highlight": ["collector", "kafka"], "active_connections": ["c2"],
@@ -586,7 +618,7 @@ A minimal but complete example illustrating all features.
       "packet": { "connection": "c2", "shape": "envelope", "data": { "topic": "telemetry-events", "partition": 3, "key": "u_9f3a" } }
     },
     {
-      "id": 5,
+      "id": 5, "name": "Write to ClickHouse",
       "title": "Consumer writes to ClickHouse",
       "description": "A Kafka consumer reads the event and inserts it into ClickHouse.",
       "highlight": ["kafka", "clickhouse"], "active_connections": ["c3"],
@@ -595,7 +627,7 @@ A minimal but complete example illustrating all features.
       "packet": { "connection": "c3", "shape": "document", "data": { "event": "button_click", "userId": "u_9f3a" } }
     },
     {
-      "id": 6,
+      "id": 6, "name": "Data at rest",
       "title": "Data at rest",
       "description": "Event is now queryable in ClickHouse. End of the pipeline.",
       "highlight": ["clickhouse"], "active_connections": [],
@@ -651,6 +683,8 @@ without requiring schema changes.
 | Scroll-wheel zoom | ✅ Interactive |
 | Component hover tooltip | ✅ Interactive |
 | Packet hover payload | ✅ Interactive |
+| Step sidebar with jump-to navigation | ✅ Interactive |
+| `step.name` sidebar label | ✅ Rendered (falls back to `title`) |
 | Popout panels | 🔲 Schema accepted, not yet rendered |
 | Connection labels | 🔲 Schema accepted, not yet rendered |
 | Elevation (`position.elevation`) | 🔲 Schema accepted, not yet rendered |
