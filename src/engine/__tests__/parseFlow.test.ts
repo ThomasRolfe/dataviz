@@ -137,6 +137,33 @@ describe('validateFlow()', () => {
     expect(() => validateFlow(flow)).toThrow(/Invalid annotation type/)
   })
 
+  it('accepts all valid annotation styles', () => {
+    const annStyles = ['info', 'success', 'warning', 'error'] as const
+    for (const style of annStyles) {
+      const flow = clone(minimalFlow()) as Record<string, unknown>
+      ;(flow['steps'] as Record<string, unknown>[])[0]['annotations'] = [
+        { type: 'callout', target: 'a', text: 'test', style },
+      ]
+      expect(() => validateFlow(flow), `style: ${style}`).not.toThrow()
+    }
+  })
+
+  it('throws on an invalid annotation style', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['annotations'] = [
+      { type: 'callout', target: 'a', text: 'test', style: 'critical' },
+    ]
+    expect(() => validateFlow(flow)).toThrow(/Invalid annotation style/)
+  })
+
+  it('accepts annotations without a style field', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['annotations'] = [
+      { type: 'callout', target: 'a', text: 'no style here' },
+    ]
+    expect(() => validateFlow(flow)).not.toThrow()
+  })
+
   it('accepts all valid packet shapes', () => {
     const shapes = ['sphere', 'document', 'token', 'blob', 'envelope'] as const
     for (const shape of shapes) {

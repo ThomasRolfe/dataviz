@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
 import ReactDOM from 'react-dom'
-import type { Annotation } from '@/types/schema'
+import type { Annotation, AnnotationStyle } from '@/types/schema'
 import type { InternalGraph } from '@/types/internal'
 import type { OverlayBridge } from '@/scene/OverlayBridge'
 import { useAnimationFrame } from '@/hooks/useAnimationFrame'
@@ -13,6 +13,13 @@ const OFFSETS = [
   {  dx: -130, dy:  60 },
 ]
 
+const STYLE_ICON: Record<AnnotationStyle, string> = {
+  error:   '✕',
+  warning: '⚠',
+  success: '✓',
+  info:    'ℹ',
+}
+
 interface Props {
   annotations: Annotation[]
   graph:       InternalGraph
@@ -23,7 +30,7 @@ export function AnnotationOverlay({ annotations, graph, bridge }: Props) {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const lineRefs = useRef<(SVGLineElement | null)[]>([])
 
-  // Fade-in after each render (new annotations or step change)
+  // Fade-in whenever visible annotations change (new arrival or step change)
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       cardRefs.current.forEach(el => { if (el) el.style.opacity = '1' })
@@ -51,7 +58,6 @@ export function AnnotationOverlay({ annotations, graph, bridge }: Props) {
       if (line) {
         const w = card?.offsetWidth  || 200
         const h = card?.offsetHeight || 36
-        // Line from anchor (component top) to nearest edge of card
         const lineX2 = dx >= 0 ? cardX : cardX + w
         const lineY2 = cardY + h / 2
         line.setAttribute('x1', String(anchor.x))
@@ -77,16 +83,21 @@ export function AnnotationOverlay({ annotations, graph, bridge }: Props) {
           />
         ))}
       </svg>
-      {annotations.map((ann, i) => (
-        <div
-          key={`${ann.target}-${i}-${ann.text.slice(0, 10)}`}
-          ref={el => { cardRefs.current[i] = el }}
-          className={`${styles.card} ${styles[ann.type]}`}
-          style={{ transform: 'translate(-9999px, -9999px)', opacity: 0 }}
-        >
-          {ann.text}
-        </div>
-      ))}
+      {annotations.map((ann, i) => {
+        const styleClass = ann.style ? styles[ann.style] : ''
+        const icon       = ann.style ? STYLE_ICON[ann.style] : null
+        return (
+          <div
+            key={`${ann.target}-${i}-${ann.text.slice(0, 10)}`}
+            ref={el => { cardRefs.current[i] = el }}
+            className={`${styles.card} ${styles[ann.type]} ${styleClass}`}
+            style={{ transform: 'translate(-9999px, -9999px)', opacity: 0 }}
+          >
+            {icon && <span className={styles.icon}>{icon}</span>}
+            {ann.text}
+          </div>
+        )
+      })}
     </>,
     overlayRoot
   )
