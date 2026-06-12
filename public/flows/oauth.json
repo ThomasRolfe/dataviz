@@ -135,6 +135,7 @@
   "steps": [
     {
       "id": 0,
+      "name": "Overview",
       "title": "Google OAuth 2.0 Authorization Code Flow",
       "description": "A user signs in with Google. The browser, application server, and Google's OAuth endpoints cooperate to prove the user's identity without the app ever seeing their Google password.",
       "highlight": [],
@@ -143,6 +144,7 @@
     },
     {
       "id": 1,
+      "name": "Click Sign in",
       "title": "User clicks Sign in with Google",
       "description": "The user triggers the login flow. The browser calls the app's login endpoint to begin the OAuth dance.",
       "highlight": ["browser"],
@@ -160,6 +162,7 @@
     },
     {
       "id": 2,
+      "name": "PKCE & redirect",
       "title": "App generates PKCE params and redirects",
       "description": "The server generates a cryptographic code_verifier, derives a code_challenge from it, stores the verifier, and returns a 302 redirect to Google's authorization endpoint.",
       "highlight": ["browser", "app_server"],
@@ -198,6 +201,7 @@
     },
     {
       "id": 3,
+      "name": "Consent screen",
       "title": "Browser navigates to Google consent screen",
       "description": "The browser follows the redirect to Google's authorization endpoint. Google validates the client_id and redirect_uri, then renders the consent screen listing the requested scopes.",
       "highlight": ["browser", "google_auth"],
@@ -224,6 +228,7 @@
     },
     {
       "id": 4,
+      "name": "User grants access",
       "title": "User reviews and grants access",
       "description": "Google's consent screen shows which data the app is requesting. The user reviews the scopes and clicks Allow. Google records the grant and prepares an authorization code.",
       "highlight": ["google_auth"],
@@ -241,6 +246,7 @@
     },
     {
       "id": 5,
+      "name": "Auth code issued",
       "title": "Google redirects back with authorization code",
       "description": "Google issues a single-use authorization code that expires in 60 seconds and redirects the browser to the app's registered callback URL. The state param is echoed back for CSRF protection.",
       "highlight": ["google_auth", "app_server"],
@@ -266,6 +272,7 @@
     },
     {
       "id": 6,
+      "name": "Exchange code",
       "title": "App server exchanges code for tokens",
       "description": "The server verifies the state param against its stored value, retrieves the code_verifier, and POSTs to Google's token endpoint. Sending the verifier proves this is the same party that initiated the flow.",
       "highlight": ["app_server", "google_token"],
@@ -293,6 +300,7 @@
     },
     {
       "id": 7,
+      "name": "Tokens returned",
       "title": "Google returns access token and ID token",
       "description": "Google verifies the code_verifier against the stored code_challenge (SHA-256 match), then issues tokens. The ID token is a signed JWT containing the user's identity claims.",
       "highlight": ["google_token", "app_server"],
@@ -320,6 +328,7 @@
     },
     {
       "id": 8,
+      "name": "Session created",
       "title": "Session created in Redis",
       "description": "The server creates a new session keyed by a UUID, stores the user's identity and access token, and sets a 24-hour TTL. The session key is what will live in the browser cookie.",
       "highlight": ["app_server", "session_store"],
@@ -346,6 +355,7 @@
     },
     {
       "id": 9,
+      "name": "Cookie set",
       "title": "Session cookie set — user is authenticated",
       "description": "The server writes the session ID into a secure, HttpOnly cookie and redirects the browser to the dashboard. The OAuth flow is complete. Future requests carry the cookie and are authenticated without hitting Google again.",
       "highlight": ["app_server", "browser"],

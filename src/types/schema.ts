@@ -82,6 +82,7 @@ export interface Packet {
 export interface Step {
   id: number
   title: string
+  name?: string
   description?: string
   highlight: string[]
   active_connections: string[]

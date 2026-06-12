@@ -81,6 +81,7 @@
   "steps": [
     {
       "id": 0,
+      "name": "Overview",
       "title": "Telemetry Pipeline Overview",
       "description": "A button click in the browser travels through a collector API and Kafka topic before landing in ClickHouse.",
       "highlight": [],
@@ -89,6 +90,7 @@
     },
     {
       "id": 1,
+      "name": "User action",
       "title": "User action fires event",
       "description": "A button click triggers analytics.track() in the browser.",
       "highlight": ["browser"],
@@ -117,6 +119,7 @@
     },
     {
       "id": 2,
+      "name": "Send to Collector",
       "title": "Event sent to Collector",
       "description": "SDK serializes the event and POSTs it to the collector endpoint.",
       "highlight": ["browser", "collector"],
@@ -136,6 +139,7 @@
     },
     {
       "id": 3,
+      "name": "Validate & batch",
       "title": "Collector validates and batches",
       "description": "Collector checks schema, attaches server-side metadata, then produces to Kafka.",
       "highlight": ["collector"],
@@ -166,6 +170,7 @@
     },
     {
       "id": 4,
+      "name": "Publish to Kafka",
       "title": "Event published to Kafka",
       "description": "Enriched event produced to the telemetry-events topic, keyed by userId.",
       "highlight": ["collector", "kafka"],
@@ -185,6 +190,7 @@
     },
     {
       "id": 5,
+      "name": "Write to ClickHouse",
       "title": "Consumer writes to ClickHouse",
       "description": "A Kafka consumer reads the event and inserts it into ClickHouse.",
       "highlight": ["kafka", "clickhouse"],
@@ -203,6 +209,7 @@
     },
     {
       "id": 6,
+      "name": "Data at rest",
       "title": "Data at rest",
       "description": "Event is now queryable in ClickHouse. End of the pipeline.",
       "highlight": ["clickhouse"],

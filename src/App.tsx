@@ -6,7 +6,7 @@ import { AnnotationOverlay } from '@/components/AnnotationOverlay'
 import { HoverTooltip } from '@/components/HoverTooltip'
 import { ZoneLabels } from '@/components/ZoneLabels'
 import { PacketTooltip } from '@/components/PacketTooltip'
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { StepSidebar } from '@/components/StepSidebar'
 import { buildGraph } from '@/engine/parseFlow'
 import { StepEngine } from '@/engine/stepEngine'
 import { useStepEngine } from '@/hooks/useStepEngine'
@@ -14,6 +14,7 @@ import { useHover } from '@/hooks/useHover'
 import type { FlowScene } from '@/scene/FlowScene'
 import type { OverlayBridge } from '@/scene/OverlayBridge'
 import type { Theme } from '@/scene/ThemeColors'
+import type { Step } from '@/types/schema'
 import type { InternalGraph } from '@/types/internal'
 import type { FlowDefinition } from '@/types/schema'
 import type { Vector3 } from 'three'
@@ -29,6 +30,7 @@ async function loadFlow(name: string): Promise<FlowDefinition> {
 function App() {
   const [graph, setGraph]   = useState<InternalGraph | null>(null)
   const [engine, setEngine] = useState<StepEngine | null>(null)
+  const [steps, setSteps]   = useState<Step[]>([])
   const [error, setError]   = useState<string | null>(null)
   const [bridge, setBridge] = useState<OverlayBridge | null>(null)
   const [theme, setTheme]   = useState<Theme>('dark')
@@ -49,6 +51,7 @@ function App() {
         const eng = new StepEngine(def.steps)
         engineRef.current = eng
         setEngine(eng)
+        setSteps(def.steps)
       })
       .catch(err => setError(String(err)))
   }, [])
@@ -67,6 +70,10 @@ function App() {
     document.documentElement.dataset.theme = next
     sceneRef.current?.setTheme(next)
   }, [theme])
+
+  const handleGoTo = useCallback((index: number) => {
+    engineRef.current?.goTo(index)
+  }, [])
 
   if (error) {
     return (
@@ -93,7 +100,6 @@ function App() {
           setBridge(b)
           scene.setHoverCallback(setHoveredId)
           setZoneLabelData(scene.getZoneLabelData())
-          // Use engineRef (always current) since stepState may lag one render cycle
           const eng = engineRef.current
           if (eng) {
             scene.applyStep(eng.getState().step, null, 0)
@@ -101,7 +107,15 @@ function App() {
         }}
       />
 
-      <ThemeToggle theme={theme} onToggle={handleThemeToggle} />
+      {steps.length > 0 && stepState && (
+        <StepSidebar
+          steps={steps}
+          currentIndex={stepState.currentIndex}
+          theme={theme}
+          onGoTo={handleGoTo}
+          onThemeToggle={handleThemeToggle}
+        />
+      )}
 
       {/* Persistent zone labels */}
       {bridge && zoneLabelData.length > 0 && (

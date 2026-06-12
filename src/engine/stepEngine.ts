@@ -27,6 +27,10 @@ export class StepEngine {
     return () => this.listeners.delete(fn)
   }
 
+  getSteps(): Step[] {
+    return this.steps
+  }
+
   getState(): StepState {
     return {
       currentIndex: this.index,
