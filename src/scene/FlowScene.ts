@@ -347,14 +347,6 @@ export class FlowScene extends SceneManager {
     return result
   }
 
-  getZoneLabelData(): Array<{ label: string; position: THREE.Vector3; color: string }> {
-    return this.graph.zones.map((zone, i) => ({
-      label:    zone.label,
-      position: this.zones[i].labelPosition,
-      color:    '#' + zone.color.getHexString(),
-    }))
-  }
-
   getPacketMesh(id: string): THREE.Mesh | null {
     return this.activePackets.find(p => p.mesh.userData.componentId === id)?.mesh ?? null
   }

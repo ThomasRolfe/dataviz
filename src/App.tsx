@@ -4,7 +4,6 @@ import { StepControls } from '@/components/StepControls'
 import { StepHUD } from '@/components/StepHUD'
 import { AnnotationOverlay } from '@/components/AnnotationOverlay'
 import { HoverTooltip } from '@/components/HoverTooltip'
-import { ZoneLabels } from '@/components/ZoneLabels'
 import { PipeLabels } from '@/components/PipeLabels'
 import { PacketTooltip } from '@/components/PacketTooltip'
 import { StepSidebar } from '@/components/StepSidebar'
@@ -36,9 +35,6 @@ function App() {
   const [bridge, setBridge]             = useState<OverlayBridge | null>(null)
   const [theme, setTheme]               = useState<Theme>('light')
   const [arrivedTargets, setArrivedTargets] = useState<Set<string>>(new Set())
-  const [zoneLabelData, setZoneLabelData] = useState<
-    Array<{ label: string; position: Vector3; color: string }>
-  >([])
   const [pipeLabelData, setPipeLabelData] = useState<
     Array<{ id: string; label: string; midpoint: Vector3 }>
   >([])
@@ -122,7 +118,6 @@ function App() {
           scene.setPacketArrivalCallback(targetId => {
             setArrivedTargets(prev => new Set([...prev, targetId]))
           })
-          setZoneLabelData(scene.getZoneLabelData())
           setPipeLabelData(scene.getConnectionLabelData())
           const eng = engineRef.current
           if (eng) {
@@ -139,11 +134,6 @@ function App() {
           onGoTo={handleGoTo}
           onThemeToggle={handleThemeToggle}
         />
-      )}
-
-      {/* Persistent zone labels */}
-      {bridge && zoneLabelData.length > 0 && (
-        <ZoneLabels zones={zoneLabelData} bridge={bridge} />
       )}
 
       {/* Persistent pipe protocol labels */}
