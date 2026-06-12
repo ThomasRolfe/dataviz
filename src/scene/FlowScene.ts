@@ -32,6 +32,9 @@ export class FlowScene extends SceneManager {
   private hoverSystem:     HoverSystem
   private overviewTarget: THREE.Vector3
   private overviewFrustum: number
+  private isPanning:       boolean = false
+  private panLast:         THREE.Vector2 = new THREE.Vector2()
+  private cameraTween:     TWEEN.Tween<{ tx: number; tz: number; f: number }> | null = null
   cameraTarget:   THREE.Vector3
   currentFrustum: number
   overlayBridge:  OverlayBridge
@@ -90,7 +93,13 @@ export class FlowScene extends SceneManager {
     this.camera.bottom = -frustumNeeded
     this.camera.updateProjectionMatrix()
 
-    canvas.addEventListener('wheel', this.onWheel, { passive: false })
+    canvas.addEventListener('wheel',        this.onWheel,       { passive: false })
+    canvas.addEventListener('pointerdown',  this.onPointerDown)
+    canvas.addEventListener('pointermove',  this.onPointerMove)
+    canvas.addEventListener('pointerup',    this.onPointerUp)
+    canvas.addEventListener('pointerleave', this.onPointerUp)
+    canvas.addEventListener('contextmenu',  this.onContextMenu)
+    canvas.style.cursor = 'grab'
     this.startLoop()
   }
 
@@ -108,6 +117,51 @@ export class FlowScene extends SceneManager {
     this.camera.top    =  next
     this.camera.bottom = -next
     this.camera.updateProjectionMatrix()
+  }
+
+  private onPointerDown = (e: PointerEvent): void => {
+    if (e.button !== 0) return
+    this.isPanning = true
+    this.panLast.set(e.clientX, e.clientY)
+    this.cameraTween?.stop()
+    this.cameraTween = null
+    this.renderer.domElement.style.cursor = 'grabbing'
+  }
+
+  private onPointerMove = (e: PointerEvent): void => {
+    if (!this.isPanning) return
+    const dx = e.clientX - this.panLast.x
+    const dy = e.clientY - this.panLast.y
+    this.panLast.set(e.clientX, e.clientY)
+    if (dx === 0 && dy === 0) return
+
+    const el     = this.renderer.domElement
+    const scaleX = (this.camera.right - this.camera.left) / el.clientWidth
+    const scaleY = (this.camera.top   - this.camera.bottom) / el.clientHeight
+
+    // Camera right/up in world space, projected onto XZ so panning stays on the ground plane
+    const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0)
+    const up    = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1)
+    right.y = 0
+    up.y    = 0
+
+    const offset = new THREE.Vector3()
+    offset.addScaledVector(right, -dx * scaleX)
+    offset.addScaledVector(up,     dy * scaleY)
+
+    this.cameraTarget.add(offset)
+    this.camera.position.add(offset)
+    this.camera.lookAt(this.cameraTarget)
+    this.camera.updateProjectionMatrix()
+  }
+
+  private onPointerUp = (): void => {
+    this.isPanning = false
+    this.renderer.domElement.style.cursor = 'grab'
+  }
+
+  private onContextMenu = (e: Event): void => {
+    e.preventDefault()
   }
 
   setHoverCallback(fn: (id: string | null) => void): void {
@@ -199,9 +253,10 @@ export class FlowScene extends SceneManager {
   }
 
   private tweenCameraTo(target: THREE.Vector3, frustum: number, durationMs: number): void {
+    this.cameraTween?.stop()
     const aspect = this.renderer.domElement.clientWidth / this.renderer.domElement.clientHeight || 1
 
-    new TWEEN.Tween({
+    this.cameraTween = new TWEEN.Tween({
       tx: this.cameraTarget.x,
       tz: this.cameraTarget.z,
       f:  this.currentFrustum,
@@ -221,6 +276,7 @@ export class FlowScene extends SceneManager {
         this.camera.bottom = -f
         this.camera.updateProjectionMatrix()
       })
+      .onComplete(() => { this.cameraTween = null })
       .start()
   }
 
@@ -249,7 +305,7 @@ export class FlowScene extends SceneManager {
   }
 
   protected onFrame(_deltaMs: number): void {
-    this.hoverSystem.update()
+    if (!this.isPanning) this.hoverSystem.update()
     this.activePacket?.update(performance.now())
     this.updatePenetration()
   }
@@ -293,7 +349,12 @@ export class FlowScene extends SceneManager {
   }
 
   dispose(): void {
-    this.renderer.domElement.removeEventListener('wheel', this.onWheel)
+    this.renderer.domElement.removeEventListener('wheel',        this.onWheel)
+    this.renderer.domElement.removeEventListener('pointerdown',  this.onPointerDown)
+    this.renderer.domElement.removeEventListener('pointermove',  this.onPointerMove)
+    this.renderer.domElement.removeEventListener('pointerup',    this.onPointerUp)
+    this.renderer.domElement.removeEventListener('pointerleave', this.onPointerUp)
+    this.renderer.domElement.removeEventListener('contextmenu',  this.onContextMenu)
     this.stopLoop()
     this.hoverSystem.dispose()
     this.grid.dispose(this.scene)
