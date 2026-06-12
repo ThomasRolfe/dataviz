@@ -29,7 +29,7 @@ export const STATE_OPACITY: Record<MeshState, number> = {
   dimmed:      0.25,
 }
 
-const PENETRATED_OPACITY = 0.15
+const PENETRATED_OPACITY = 0.30
 
 export class ComponentMesh {
   group:     THREE.Group
@@ -38,7 +38,6 @@ export class ComponentMesh {
   id:        string
 
   private mat:          THREE.MeshStandardMaterial
-  private edgeMesh:     THREE.LineSegments
   private currentState: MeshState = 'idle'
   private penetrated:   boolean   = false
 
@@ -81,14 +80,6 @@ export class ComponentMesh {
     this.hitMesh.userData = { componentId: component.id } satisfies ComponentMeshUserData
     this.group.add(this.hitMesh)
 
-    // Edge outline — bounding-box shape works for all component shapes
-    this.edgeMesh = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)),
-      new THREE.LineBasicMaterial({ color: TYPE_COLOR[component.type] }),
-    )
-    this.edgeMesh.visible = false
-    this.group.add(this.edgeMesh)
-
     scene.add(this.group)
   }
 
@@ -123,13 +114,11 @@ export class ComponentMesh {
     if (this.penetrated === penetrated) return
     this.penetrated = penetrated
     if (penetrated) {
-      this.mat.opacity      = PENETRATED_OPACITY
-      this.mat.transparent  = true
-      this.edgeMesh.visible = true
+      this.mat.opacity     = PENETRATED_OPACITY
+      this.mat.transparent = true
     } else {
-      this.mat.opacity      = STATE_OPACITY[this.currentState]
-      this.mat.transparent  = this.mat.opacity < 1.0
-      this.edgeMesh.visible = false
+      this.mat.opacity     = STATE_OPACITY[this.currentState]
+      this.mat.transparent = this.mat.opacity < 1.0
     }
   }
 
@@ -137,8 +126,6 @@ export class ComponentMesh {
     scene.remove(this.group)
     this.hitMesh.geometry.dispose()
     ;(this.hitMesh.material as THREE.Material).dispose()
-    this.edgeMesh.geometry.dispose()
-    ;(this.edgeMesh.material as THREE.Material).dispose()
     this.mat.dispose()
     for (const child of this.group.children) {
       if (child instanceof THREE.Mesh && child !== this.hitMesh) {
