@@ -141,13 +141,14 @@ function App() {
         />
       )}
 
-      {hoveredId === '__packet__' && sceneRef.current && bridge && (
+      {hoveredId?.startsWith('__packet__') && sceneRef.current && bridge && (
         <PacketTooltip
           scene={sceneRef.current}
           bridge={bridge}
+          hoveredId={hoveredId}
         />
       )}
-      {hoveredId && hoveredId !== '__packet__' && bridge && (
+      {hoveredId && !hoveredId.startsWith('__packet__') && bridge && (
         <HoverTooltip
           hoveredId={hoveredId}
           graph={graph}

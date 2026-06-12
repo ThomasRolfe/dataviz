@@ -26,17 +26,17 @@ export class FlowScene extends SceneManager {
   private zones:          ZoneRenderer[]
   private grid:           GridFloor
   private lights:         SceneLights
-  private currentTheme:   Theme = 'light'
-  private activePacket:    DataPacket | null = null
-  private penetratedIds:  Set<string> = new Set()
+  private currentTheme:    Theme = 'light'
+  private activePackets:   DataPacket[] = []
+  private packetPipeMap:   Map<DataPacket, string> = new Map()
+  private arrivedPackets:  Set<DataPacket> = new Set()
+  private penetratedIds:   Set<string> = new Set()
   private hoverSystem:     HoverSystem
-  private overviewTarget: THREE.Vector3
+  private overviewTarget:  THREE.Vector3
   private overviewFrustum: number
-  private isPanning:        boolean = false
-  private panLast:          THREE.Vector2 = new THREE.Vector2()
-  private cameraTween:      TWEEN.Tween<{ tx: number; tz: number; f: number }> | null = null
-  private packetPipeId:     string | null = null
-  private packetWasArrived: boolean = false
+  private isPanning:       boolean = false
+  private panLast:         THREE.Vector2 = new THREE.Vector2()
+  private cameraTween:     TWEEN.Tween<{ tx: number; tz: number; f: number }> | null = null
   cameraTarget:   THREE.Vector3
   currentFrustum: number
   overlayBridge:  OverlayBridge
@@ -176,24 +176,24 @@ export class FlowScene extends SceneManager {
     updateLighting(this.lights, theme)
     this.grid.setTheme(theme, this.scene)
     for (const pipe of this.pipes.values()) pipe.setTheme(theme)
-    this.activePacket?.setTheme(theme)
+    for (const packet of this.activePackets) packet.setTheme(theme)
   }
 
   applyStep(step: Step, _prevStep: Step | null, durationMs: number): void {
     const PHASE_MATERIAL = durationMs * 0.4
     const PHASE_CAMERA   = durationMs * 0.3
 
-    // 1. Dispose active packet, clear traversal state, clear penetration
-    if (this.packetPipeId) {
-      this.pipes.get(this.packetPipeId)?.setPacketTraversing(false, PHASE_MATERIAL)
-      this.packetPipeId     = null
-      this.packetWasArrived = false
+    // 1. Dispose all active packets, clear traversal state, clear penetration
+    for (const [, pipeId] of this.packetPipeMap) {
+      this.pipes.get(pipeId)?.setPacketTraversing(false, PHASE_MATERIAL)
     }
-    if (this.activePacket) {
-      this.hoverSystem.removeTarget(this.activePacket.mesh)
-      this.activePacket.dispose(this.scene)
-      this.activePacket = null
+    for (const packet of this.activePackets) {
+      this.hoverSystem.removeTarget(packet.mesh)
+      packet.dispose(this.scene)
     }
+    this.activePackets  = []
+    this.packetPipeMap  = new Map()
+    this.arrivedPackets = new Set()
     for (const id of this.penetratedIds) {
       this.components.get(id)?.setPenetrated(false)
     }
@@ -218,24 +218,26 @@ export class FlowScene extends SceneManager {
     // 4. Animate camera
     this.animateCamera(step.camera, PHASE_CAMERA)
 
-    // 5. Animate packet — pipe flares to full brightness while packet travels
-    if (step.packet) {
-      const pipe = this.pipes.get(step.packet.connection)
-      if (pipe) {
-        const conn   = this.graph.connections.get(step.packet.connection)
-        const packet = new DataPacket(this.scene, step.packet.shape, this.currentTheme)
-        packet.mesh.userData.componentId  = '__packet__'
-        packet.mesh.userData.packetData   = step.packet.data
-        packet.mesh.userData.packetLabel  = conn?.label ?? step.packet.connection
-        packet.mesh.userData.packetShape  = step.packet.shape
-        this.hoverSystem.addTarget(packet.mesh)
-        this.activePacket     = packet
-        this.packetPipeId     = step.packet.connection
-        this.packetWasArrived = false
-        pipe.setPacketTraversing(true, 200)
-        packet.travel(pipe.curve, PACKET_TRAVEL_MS)
-      }
-    }
+    // 5. Launch all packets — each pipe flares to full brightness while a packet is on it
+    const packetDefs = [
+      ...(step.packet  ? [step.packet]    : []),
+      ...(step.packets ?? []),
+    ]
+    packetDefs.forEach((def, i) => {
+      const pipe = this.pipes.get(def.connection)
+      if (!pipe) return
+      const conn   = this.graph.connections.get(def.connection)
+      const packet = new DataPacket(this.scene, def.shape, this.currentTheme)
+      packet.mesh.userData.componentId = `__packet__${i}`
+      packet.mesh.userData.packetData  = def.data
+      packet.mesh.userData.packetLabel = conn?.label ?? def.connection
+      packet.mesh.userData.packetShape = def.shape
+      this.hoverSystem.addTarget(packet.mesh)
+      this.activePackets.push(packet)
+      this.packetPipeMap.set(packet, def.connection)
+      pipe.setPacketTraversing(true, 200)
+      packet.travel(pipe.curve, PACKET_TRAVEL_MS)
+    })
   }
 
   private animateCamera(config: Step['camera'], durationMs: number): void {
@@ -319,49 +321,58 @@ export class FlowScene extends SceneManager {
     }))
   }
 
-  getActivePacketMesh(): THREE.Mesh | null {
-    return this.activePacket?.mesh ?? null
+  getPacketMesh(id: string): THREE.Mesh | null {
+    return this.activePackets.find(p => p.mesh.userData.componentId === id)?.mesh ?? null
   }
 
   protected onFrame(_deltaMs: number): void {
     if (!this.isPanning) this.hoverSystem.update()
-    this.activePacket?.update(performance.now())
 
-    // Dim the pipe back to active-state brightness once the packet has landed
-    if (this.packetPipeId && this.activePacket?.arrived && !this.packetWasArrived) {
-      this.pipes.get(this.packetPipeId)?.setPacketTraversing(false, 600)
-      this.packetWasArrived = true
+    const now = performance.now()
+    for (const packet of this.activePackets) {
+      packet.update(now)
+
+      // Dim the pipe once this packet lands, but only if no other traveling packet
+      // is still using the same connection.
+      if (packet.arrived && !this.arrivedPackets.has(packet)) {
+        this.arrivedPackets.add(packet)
+        const pipeId = this.packetPipeMap.get(packet)
+        if (pipeId) {
+          const stillTraveling = this.activePackets.some(
+            p => !p.arrived && this.packetPipeMap.get(p) === pipeId
+          )
+          if (!stillTraveling) this.pipes.get(pipeId)?.setPacketTraversing(false, 600)
+        }
+      }
     }
 
     this.updatePenetration()
   }
 
   private updatePenetration(): void {
-    if (!this.activePacket) {
+    if (this.activePackets.length === 0) {
       if (this.penetratedIds.size > 0) {
-        for (const id of this.penetratedIds) {
-          this.components.get(id)?.setPenetrated(false)
-        }
+        for (const id of this.penetratedIds) this.components.get(id)?.setPenetrated(false)
         this.penetratedIds.clear()
       }
       return
     }
 
-    const p = this.activePacket.mesh.position
+    // Union penetration test across all active packets
     const next = new Set<string>()
-
-    for (const [id] of this.components) {
-      const ic = this.graph.components.get(id)
-      if (!ic) continue
-      const hx = ic.meshSize.x / 2
-      const hz = ic.meshSize.z / 2
-      if (
-        p.x >= ic.center.x - hx &&
-        p.x <= ic.center.x + hx &&
-        p.z >= ic.center.z - hz &&
-        p.z <= ic.center.z + hz
-      ) {
-        next.add(id)
+    for (const packet of this.activePackets) {
+      const p = packet.mesh.position
+      for (const [id] of this.components) {
+        const ic = this.graph.components.get(id)
+        if (!ic) continue
+        const hx = ic.meshSize.x / 2
+        const hz = ic.meshSize.z / 2
+        if (
+          p.x >= ic.center.x - hx && p.x <= ic.center.x + hx &&
+          p.z >= ic.center.z - hz && p.z <= ic.center.z + hz
+        ) {
+          next.add(id)
+        }
       }
     }
 
@@ -387,11 +398,11 @@ export class FlowScene extends SceneManager {
     for (const z of this.zones) z.dispose(this.scene)
     for (const cm of this.components.values()) cm.dispose(this.scene)
     for (const pipe of this.pipes.values()) pipe.dispose(this.scene)
-    if (this.activePacket) {
-      this.hoverSystem.removeTarget(this.activePacket.mesh)
-      this.activePacket.dispose(this.scene)
-      this.activePacket = null
+    for (const packet of this.activePackets) {
+      this.hoverSystem.removeTarget(packet.mesh)
+      packet.dispose(this.scene)
     }
+    this.activePackets = []
     this.penetratedIds.clear()
     super.dispose()
   }

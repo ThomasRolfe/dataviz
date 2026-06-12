@@ -6,18 +6,19 @@ import { useAnimationFrame } from '@/hooks/useAnimationFrame'
 import styles from '@/styles/PacketTooltip.module.css'
 
 interface PacketTooltipProps {
-  scene:  FlowScene
-  bridge: OverlayBridge
+  scene:     FlowScene
+  bridge:    OverlayBridge
+  hoveredId: string
 }
 
-export function PacketTooltip({ scene, bridge }: PacketTooltipProps) {
+export function PacketTooltip({ scene, bridge, hoveredId }: PacketTooltipProps) {
   const divRef   = useRef<HTMLDivElement | null>(null)
   const labelRef = useRef<HTMLElement | null>(null)
   const shapeRef = useRef<HTMLSpanElement | null>(null)
   const dataRef  = useRef<HTMLPreElement | null>(null)
 
   useAnimationFrame(() => {
-    const mesh = scene.getActivePacketMesh()
+    const mesh = scene.getPacketMesh(hoveredId)
     if (!divRef.current || !mesh) return
 
     const label = mesh.userData.packetLabel as string | undefined

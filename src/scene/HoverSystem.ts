@@ -41,7 +41,9 @@ export class HoverSystem {
 
     // Packet takes priority: if the ray hits both a component and the active
     // packet, prefer the packet regardless of depth order.
-    const packetHit = intersects.find(i => i.object.userData.componentId === '__packet__')
+    const packetHit = intersects.find(i =>
+      String(i.object.userData.componentId ?? '').startsWith('__packet__')
+    )
     const hit = packetHit
       ? packetHit.object
       : intersects.length > 0 ? intersects[0].object : null
