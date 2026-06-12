@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js'
 import * as brandIcons from '@fortawesome/free-brands-svg-icons'
+import { COMPONENT_GAP } from '@/engine/layoutEngine'
 
 // Font Awesome icon tuple: [width, height, aliases, unicode, svgPathData]
 type FAIconTuple = [number, number, string[], string, string | string[]]
@@ -55,10 +56,10 @@ export function buildLogoMeshes(
   const svgSize   = tempBox.getSize(new THREE.Vector3())
   const svgCenter = tempBox.getCenter(new THREE.Vector3())
 
-  // Uniform scale so logo fills 80% of the component's XZ footprint
+  // Scale logo to fill ~90% of one grid cell (undo COMPONENT_GAP shrink, then 90%)
   const uniformScale = Math.min(
-    (meshSize.x * 0.8) / svgSize.x,
-    (meshSize.z * 0.8) / svgSize.y,
+    (meshSize.x / COMPONENT_GAP * 0.9) / svgSize.x,
+    (meshSize.z / COMPONENT_GAP * 0.9) / svgSize.y,
   )
 
   // Extrusion depth in SVG units → equals WORLD_EXTRUDE_DEPTH after scaling

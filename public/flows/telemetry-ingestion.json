@@ -95,7 +95,6 @@
       "type": "external",
       "logo": "aws",
       "position": { "col": 12, "row": 3 },
-      "size": { "w": 2, "h": 0.15 },
       "meta": {
         "description": "AWS Kinesis Data Firehose in us-east-1. Receives Tenant D's telemetry and delivers it to their dedicated S3 + Athena stack.",
         "notes": "Cross-region TLS. Delivery stream: tenant-d-telemetry."
