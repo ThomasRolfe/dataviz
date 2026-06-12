@@ -154,6 +154,31 @@ describe('validateFlow()', () => {
     ;(flow['steps'] as Record<string, unknown>[])[0]['packet'] = null
     expect(() => validateFlow(flow)).not.toThrow()
   })
+
+  it('accepts a step with multiple packets', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['packets'] = [
+      { connection: 'c_ab', shape: 'sphere' },
+      { connection: 'c_ab', shape: 'document' },
+    ]
+    expect(() => validateFlow(flow)).not.toThrow()
+  })
+
+  it('throws when packets[].connection references an unknown connection', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['packets'] = [
+      { connection: 'ghost_conn', shape: 'sphere' },
+    ]
+    expect(() => validateFlow(flow)).toThrow(/unknown connection/)
+  })
+
+  it('throws on an invalid shape in packets[]', () => {
+    const flow = clone(minimalFlow()) as Record<string, unknown>
+    ;(flow['steps'] as Record<string, unknown>[])[0]['packets'] = [
+      { connection: 'c_ab', shape: 'cube' },
+    ]
+    expect(() => validateFlow(flow)).toThrow(/Invalid packet shape/)
+  })
 })
 
 // ── buildGraph() ─────────────────────────────────────────────────────────────

@@ -104,6 +104,7 @@ export interface Step {
   annotations?: Annotation[]
   popouts?: Popout[]
   packet?: Packet | null
+  packets?: Packet[]
 }
 
 export interface FlowDefinition {

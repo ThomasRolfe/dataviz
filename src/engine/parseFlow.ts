@@ -114,6 +114,16 @@ export function validateFlow(raw: unknown): FlowDefinition {
       const shape = assertString(packet['shape'], 'packet.shape')
       if (!VALID_PACKET_SHAPES.has(shape)) throw new Error(`Invalid packet shape: ${shape}`)
     }
+    if (step['packets'] !== undefined) {
+      const packets = assertArray(step['packets'], 'step.packets')
+      for (const p of packets) {
+        const pkt    = assertObject(p, 'step.packets item')
+        const connId = assertString(pkt['connection'], 'packets[].connection')
+        if (!connectionIds.has(connId)) throw new Error(`packets[].connection references unknown connection: ${connId}`)
+        const shape  = assertString(pkt['shape'], 'packets[].shape')
+        if (!VALID_PACKET_SHAPES.has(shape)) throw new Error(`Invalid packet shape in packets[]: ${shape}`)
+      }
+    }
   }
 
   return raw as FlowDefinition
