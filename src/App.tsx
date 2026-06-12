@@ -5,6 +5,7 @@ import { StepHUD } from '@/components/StepHUD'
 import { AnnotationOverlay } from '@/components/AnnotationOverlay'
 import { HoverTooltip } from '@/components/HoverTooltip'
 import { ZoneLabels } from '@/components/ZoneLabels'
+import { PipeLabels } from '@/components/PipeLabels'
 import { PacketTooltip } from '@/components/PacketTooltip'
 import { StepSidebar } from '@/components/StepSidebar'
 import { buildGraph } from '@/engine/parseFlow'
@@ -36,6 +37,9 @@ function App() {
   const [theme, setTheme]   = useState<Theme>('light')
   const [zoneLabelData, setZoneLabelData] = useState<
     Array<{ label: string; position: Vector3; color: string }>
+  >([])
+  const [pipeLabelData, setPipeLabelData] = useState<
+    Array<{ id: string; label: string; midpoint: Vector3 }>
   >([])
 
   const stepState                   = useStepEngine(engine)
@@ -100,6 +104,7 @@ function App() {
           setBridge(b)
           scene.setHoverCallback(setHoveredId)
           setZoneLabelData(scene.getZoneLabelData())
+          setPipeLabelData(scene.getConnectionLabelData())
           const eng = engineRef.current
           if (eng) {
             scene.applyStep(eng.getState().step, null, 0)
@@ -120,6 +125,11 @@ function App() {
       {/* Persistent zone labels */}
       {bridge && zoneLabelData.length > 0 && (
         <ZoneLabels zones={zoneLabelData} bridge={bridge} />
+      )}
+
+      {/* Persistent pipe protocol labels */}
+      {bridge && pipeLabelData.length > 0 && (
+        <PipeLabels pipes={pipeLabelData} bridge={bridge} />
       )}
 
       {/* Per-step annotations with leader lines */}
