@@ -32,9 +32,11 @@ export class FlowScene extends SceneManager {
   private hoverSystem:     HoverSystem
   private overviewTarget: THREE.Vector3
   private overviewFrustum: number
-  private isPanning:       boolean = false
-  private panLast:         THREE.Vector2 = new THREE.Vector2()
-  private cameraTween:     TWEEN.Tween<{ tx: number; tz: number; f: number }> | null = null
+  private isPanning:        boolean = false
+  private panLast:          THREE.Vector2 = new THREE.Vector2()
+  private cameraTween:      TWEEN.Tween<{ tx: number; tz: number; f: number }> | null = null
+  private packetPipeId:     string | null = null
+  private packetWasArrived: boolean = false
   cameraTarget:   THREE.Vector3
   currentFrustum: number
   overlayBridge:  OverlayBridge
@@ -181,7 +183,12 @@ export class FlowScene extends SceneManager {
     const PHASE_MATERIAL = durationMs * 0.4
     const PHASE_CAMERA   = durationMs * 0.3
 
-    // 1. Dispose active packet and clear any penetration state from previous step
+    // 1. Dispose active packet, clear traversal state, clear penetration
+    if (this.packetPipeId) {
+      this.pipes.get(this.packetPipeId)?.setPacketTraversing(false, PHASE_MATERIAL)
+      this.packetPipeId     = null
+      this.packetWasArrived = false
+    }
     if (this.activePacket) {
       this.hoverSystem.removeTarget(this.activePacket.mesh)
       this.activePacket.dispose(this.scene)
@@ -202,7 +209,7 @@ export class FlowScene extends SceneManager {
       mesh.transitionTo(state, PHASE_MATERIAL)
     }
 
-    // 3. Transition pipe materials
+    // 3. Transition pipe materials (active_connections → medium brightness)
     for (const [id, pipe] of this.pipes) {
       const active = step.active_connections.includes(id)
       pipe.setActive(active, PHASE_MATERIAL)
@@ -211,7 +218,7 @@ export class FlowScene extends SceneManager {
     // 4. Animate camera
     this.animateCamera(step.camera, PHASE_CAMERA)
 
-    // 5. Animate packet
+    // 5. Animate packet — pipe flares to full brightness while packet travels
     if (step.packet) {
       const pipe = this.pipes.get(step.packet.connection)
       if (pipe) {
@@ -222,7 +229,10 @@ export class FlowScene extends SceneManager {
         packet.mesh.userData.packetLabel  = conn?.label ?? step.packet.connection
         packet.mesh.userData.packetShape  = step.packet.shape
         this.hoverSystem.addTarget(packet.mesh)
-        this.activePacket = packet
+        this.activePacket     = packet
+        this.packetPipeId     = step.packet.connection
+        this.packetWasArrived = false
+        pipe.setPacketTraversing(true, 200)
         packet.travel(pipe.curve, PACKET_TRAVEL_MS)
       }
     }
@@ -307,6 +317,13 @@ export class FlowScene extends SceneManager {
   protected onFrame(_deltaMs: number): void {
     if (!this.isPanning) this.hoverSystem.update()
     this.activePacket?.update(performance.now())
+
+    // Dim the pipe back to active-state brightness once the packet has landed
+    if (this.packetPipeId && this.activePacket?.arrived && !this.packetWasArrived) {
+      this.pipes.get(this.packetPipeId)?.setPacketTraversing(false, 600)
+      this.packetWasArrived = true
+    }
+
     this.updatePenetration()
   }
 
