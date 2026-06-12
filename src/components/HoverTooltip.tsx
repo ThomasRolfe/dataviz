@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import ReactDOM from 'react-dom'
 import type { InternalGraph } from '@/types/internal'
 import type { OverlayBridge } from '@/scene/OverlayBridge'
-import { useAnimationFrame } from '@/hooks/useAnimationFrame'
+import { useWorldToScreen } from '@/hooks/useWorldToScreen'
 import styles from '@/styles/HoverTooltip.module.css'
 
 interface HoverTooltipProps {
@@ -12,18 +12,20 @@ interface HoverTooltipProps {
 }
 
 export function HoverTooltip({ hoveredId, graph, bridge }: HoverTooltipProps) {
-  const divRef = useRef<HTMLDivElement | null>(null)
+  const divRef    = useRef<HTMLDivElement | null>(null)
+  const component = hoveredId ? (graph.components.get(hoveredId) ?? null) : null
 
-  useAnimationFrame(() => {
-    if (!divRef.current || !hoveredId) return
-    const component = graph.components.get(hoveredId)
-    if (!component) return
-    const pos = bridge.worldToScreen(component.topCenter)
-    divRef.current.style.transform = `translate(calc(${pos.x}px - 50%), calc(${pos.y}px - 100% - 12px))`
-  }, [hoveredId, graph, bridge])
+  useWorldToScreen(
+    bridge,
+    () => component?.topCenter ?? null,
+    (x, y) => {
+      if (divRef.current) {
+        divRef.current.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 100% - 12px))`
+      }
+    },
+    [hoveredId, graph],
+  )
 
-  if (!hoveredId) return null
-  const component = graph.components.get(hoveredId)
   if (!component) return null
 
   const { meta } = component

@@ -84,12 +84,14 @@ export interface Popout {
   data: Record<string, unknown>
 }
 
-export type PacketShape = 'sphere' | 'document' | 'token' | 'blob' | 'envelope'
+export type PacketShape   = 'sphere' | 'document' | 'token' | 'blob' | 'envelope'
+export type ArrivalStyle  = 'error' | 'success' | 'warning'
 
 export interface Packet {
-  connection: string
-  shape: PacketShape
-  data?: Record<string, unknown>
+  connection:    string
+  shape:         PacketShape
+  data?:         Record<string, unknown>
+  arrivalStyle?: ArrivalStyle
 }
 
 export interface Step {

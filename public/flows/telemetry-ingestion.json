@@ -107,7 +107,7 @@
     { "id": "conn_c",   "from": "tenant_c",  "to": "collector",      "label": "OTLP/gRPC",           "route": "auto" },
     { "id": "conn_d",   "from": "tenant_d",  "to": "collector",      "label": "OTLP/gRPC",           "route": "auto" },
     { "id": "conn_fwd", "from": "collector", "to": "observability",  "label": "batch export",         "route": "auto" },
-    { "id": "conn_ext", "from": "collector", "to": "external_cloud", "label": "cross-region forward", "route": "auto" }
+    { "id": "conn_ext", "from": "collector", "to": "external_cloud", "label": "cross-region forward", "route": [{"col": 6, "row": 1}, {"col": 12, "row": 1}] }
   ],
   "steps": [
     {
@@ -139,6 +139,7 @@
       "packet": {
         "connection": "conn_a",
         "shape": "sphere",
+        "arrivalStyle": "success",
         "data": {
           "tenant": "tenant-a",
           "signal": "metric",
@@ -169,6 +170,7 @@
       "packet": {
         "connection": "conn_b",
         "shape": "envelope",
+        "arrivalStyle": "error",
         "data": {
           "tenant": "tenant-b",
           "signal": "log",
@@ -198,6 +200,7 @@
       "packet": {
         "connection": "conn_c",
         "shape": "token",
+        "arrivalStyle": "success",
         "data": {
           "tenant": "tenant-c",
           "signal": "trace_span",
@@ -229,6 +232,7 @@
       "packet": {
         "connection": "conn_a",
         "shape": "document",
+        "arrivalStyle": "error",
         "data": {
           "tenant": "tenant-a",
           "signal": "log",
@@ -258,6 +262,7 @@
       "packet": {
         "connection": "conn_b",
         "shape": "sphere",
+        "arrivalStyle": "warning",
         "data": {
           "tenant": "tenant-b",
           "signal": "metric",
@@ -288,6 +293,7 @@
       "packet": {
         "connection": "conn_d",
         "shape": "sphere",
+        "arrivalStyle": "success",
         "data": {
           "tenant": "tenant-d",
           "signal": "metric",
@@ -318,6 +324,7 @@
       "packet": {
         "connection": "conn_ext",
         "shape": "blob",
+        "arrivalStyle": "success",
         "data": {
           "delivery_stream": "tenant-d-telemetry",
           "batch_events": 612,
@@ -347,6 +354,7 @@
       "packet": {
         "connection": "conn_fwd",
         "shape": "blob",
+        "arrivalStyle": "success",
         "data": {
           "batch_events": 1842,
           "compressed_kb": 134,

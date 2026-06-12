@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import * as TWEEN from '@tweenjs/tween.js'
 import type { InternalComponent } from '@/types/internal'
 import type { ComponentType } from '@/types/schema'
-import { buildShapeMeshes } from '@/scene/componentShapes'
+import { buildShapeMeshes } from '@/scene/shapeRegistry'
+import type { ComponentMeshUserData } from '@/scene/meshUserData'
 
 export type MeshState = 'idle' | 'highlighted' | 'dimmed'
 
@@ -74,7 +75,7 @@ export class ComponentMesh {
       new THREE.BoxGeometry(w, h, d),
       new THREE.MeshBasicMaterial({ visible: false }),
     )
-    this.hitMesh.userData.componentId = component.id
+    this.hitMesh.userData = { componentId: component.id } satisfies ComponentMeshUserData
     this.group.add(this.hitMesh)
 
     // Edge outline — bounding-box shape works for all component shapes
@@ -127,15 +128,6 @@ export class ComponentMesh {
       this.mat.transparent  = this.mat.opacity < 1.0
       this.edgeMesh.visible = false
     }
-  }
-
-  addToRaycastTargets(targets: THREE.Object3D[]): void {
-    targets.push(this.hitMesh)
-  }
-
-  removeFromRaycastTargets(targets: THREE.Object3D[]): void {
-    const idx = targets.indexOf(this.hitMesh)
-    if (idx !== -1) targets.splice(idx, 1)
   }
 
   dispose(scene: THREE.Scene): void {
