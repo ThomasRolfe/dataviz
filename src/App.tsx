@@ -28,25 +28,25 @@ async function loadFlow(name: string): Promise<FlowDefinition> {
 }
 
 function App() {
-  const [graph, setGraph]   = useState<InternalGraph | null>(null)
+  const [graph, setGraph] = useState<InternalGraph | null>(null)
   const [engine, setEngine] = useState<StepEngine | null>(null)
-  const [steps, setSteps]   = useState<Step[]>([])
-  const [error, setError]   = useState<string | null>(null)
-  const [bridge, setBridge]             = useState<OverlayBridge | null>(null)
-  const [theme, setTheme]               = useState<Theme>('light')
+  const [steps, setSteps] = useState<Step[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [bridge, setBridge] = useState<OverlayBridge | null>(null)
+  const [theme, setTheme] = useState<Theme>('light')
   const [arrivedTargets, setArrivedTargets] = useState<Set<string>>(new Set())
   const [pipeLabelData, setPipeLabelData] = useState<
     Array<{ id: string; label: string; midpoint: Vector3 }>
   >([])
 
-  const stepState                   = useStepEngine(engine)
+  const stepState = useStepEngine(engine)
   const { hoveredId, setHoveredId } = useHover()
-  const sceneRef                    = useRef<FlowScene | null>(null)
-  const engineRef                   = useRef<StepEngine | null>(null)
+  const sceneRef = useRef<FlowScene | null>(null)
+  const engineRef = useRef<StepEngine | null>(null)
 
   useEffect(() => {
-    loadFlow('example')
-      .then(def => {
+    loadFlow('telemetry-ingestion')
+      .then((def) => {
         const g = buildGraph(def)
         setGraph(g)
         const eng = new StepEngine(def.steps)
@@ -54,20 +54,22 @@ function App() {
         setEngine(eng)
         setSteps(def.steps)
       })
-      .catch(err => setError(String(err)))
+      .catch((err) => setError(String(err)))
   }, [])
 
   // Wire step engine to scene on each step change
   useEffect(() => {
     if (!engine) return
-    return engine.subscribe(state => {
+    return engine.subscribe((state) => {
       const packetDefs = [
-        ...(state.step.packet  ? [state.step.packet]    : []),
+        ...(state.step.packet ? [state.step.packet] : []),
         ...(state.step.packets ?? []),
       ]
       // If no packets this step, show annotations immediately
       if (packetDefs.length === 0) {
-        setArrivedTargets(new Set(state.step.annotations?.map(a => a.target) ?? []))
+        setArrivedTargets(
+          new Set(state.step.annotations?.map((a) => a.target) ?? []),
+        )
       } else {
         setArrivedTargets(new Set())
       }
@@ -92,7 +94,9 @@ function App() {
 
   if (error) {
     return (
-      <div style={{ color: '#ff6b6b', padding: '2rem', fontFamily: 'monospace' }}>
+      <div
+        style={{ color: '#ff6b6b', padding: '2rem', fontFamily: 'monospace' }}
+      >
         Error: {error}
       </div>
     )
@@ -100,7 +104,9 @@ function App() {
 
   if (!graph) {
     return (
-      <div style={{ color: '#e0e0e0', padding: '2rem', fontFamily: 'monospace' }}>
+      <div
+        style={{ color: '#e0e0e0', padding: '2rem', fontFamily: 'monospace' }}
+      >
         Loading…
       </div>
     )
@@ -115,8 +121,8 @@ function App() {
           setBridge(b)
           scene.setTheme(theme)
           scene.setHoverCallback(setHoveredId)
-          scene.setPacketArrivalCallback(targetId => {
-            setArrivedTargets(prev => new Set([...prev, targetId]))
+          scene.setPacketArrivalCallback((targetId) => {
+            setArrivedTargets((prev) => new Set([...prev, targetId]))
           })
           setPipeLabelData(scene.getConnectionLabelData())
           const eng = engineRef.current
@@ -142,12 +148,20 @@ function App() {
       )}
 
       {/* Per-step annotations — deferred until the packet arrives at the target */}
-      {bridge && (() => {
-        const visible = stepState?.step.annotations?.filter(a => arrivedTargets.has(a.target)) ?? []
-        return visible.length > 0
-          ? <AnnotationOverlay annotations={visible} graph={graph} bridge={bridge} />
-          : null
-      })()}
+      {bridge &&
+        (() => {
+          const visible =
+            stepState?.step.annotations?.filter((a) =>
+              arrivedTargets.has(a.target),
+            ) ?? []
+          return visible.length > 0 ? (
+            <AnnotationOverlay
+              annotations={visible}
+              graph={graph}
+              bridge={bridge}
+            />
+          ) : null
+        })()}
 
       {hoveredId?.startsWith('__packet__') && sceneRef.current && bridge && (
         <PacketTooltip
@@ -157,11 +171,7 @@ function App() {
         />
       )}
       {hoveredId && !hoveredId.startsWith('__packet__') && bridge && (
-        <HoverTooltip
-          hoveredId={hoveredId}
-          graph={graph}
-          bridge={bridge}
-        />
+        <HoverTooltip hoveredId={hoveredId} graph={graph} bridge={bridge} />
       )}
 
       {engine && stepState && (
