@@ -68,12 +68,14 @@ export interface Connection {
   route: 'auto' | WayPoint[]
 }
 
-export type AnnotationType = 'callout' | 'transform'
+export type AnnotationType  = 'callout' | 'transform'
+export type AnnotationStyle = 'info' | 'success' | 'warning' | 'error'
 
 export interface Annotation {
-  type: AnnotationType
+  type:   AnnotationType
   target: string
-  text: string
+  text:   string
+  style?: AnnotationStyle
 }
 
 export interface Popout {

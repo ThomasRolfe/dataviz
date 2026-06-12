@@ -28,13 +28,25 @@
   line-height: 1.45;
   z-index: 190;
   transition: opacity 200ms ease-out;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
 }
 
+.icon {
+  flex-shrink: 0;
+  font-size: 0.80rem;
+  font-style: normal;
+  line-height: 1;
+}
+
+/* ── annotation type base styles ─────────────────────────────────────────── */
+
 .callout {
-  background: var(--panel-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--panel-border);
-  border-left: 3px solid var(--accent-blue);
+  background: var(--callout-info-bg);
+  color: var(--callout-info-fg);
+  border: 1px solid var(--callout-info-border);
+  border-left: 3px solid var(--callout-info-accent);
   backdrop-filter: blur(8px);
 }
 
@@ -46,4 +58,50 @@
   border: 1px solid var(--transform-border);
   border-left: 3px solid var(--accent-cyan);
   backdrop-filter: blur(8px);
+}
+
+/* ── annotation style overrides (take precedence over type base) ─────────── */
+
+.card.error {
+  background:        var(--callout-error-bg);
+  color:             var(--callout-error-fg);
+  border-color:      var(--callout-error-border);
+  border-left-color: var(--callout-error-accent);
+}
+
+.card.error .icon {
+  color: var(--callout-error-accent);
+}
+
+.card.warning {
+  background:        var(--callout-warning-bg);
+  color:             var(--callout-warning-fg);
+  border-color:      var(--callout-warning-border);
+  border-left-color: var(--callout-warning-accent);
+}
+
+.card.warning .icon {
+  color: var(--callout-warning-accent);
+}
+
+.card.success {
+  background:        var(--callout-success-bg);
+  color:             var(--callout-success-fg);
+  border-color:      var(--callout-success-border);
+  border-left-color: var(--callout-success-accent);
+}
+
+.card.success .icon {
+  color: var(--callout-success-accent);
+}
+
+.card.info {
+  background:        var(--callout-info-bg);
+  color:             var(--callout-info-fg);
+  border-color:      var(--callout-info-border);
+  border-left-color: var(--callout-info-accent);
+}
+
+.card.info .icon {
+  color: var(--callout-info-accent);
 }

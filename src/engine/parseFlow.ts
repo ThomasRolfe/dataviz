@@ -29,7 +29,8 @@ function assertObject(val: unknown, field: string): Record<string, unknown> {
 const VALID_COMPONENT_TYPES  = new Set(['client', 'service', 'database', 'queue', 'function', 'external'])
 const VALID_COMPONENT_SHAPES = new Set(['stack', 'cloud', 'server', 'desktop', 'smartphone', 'router', 'deskphone', 'wall'])
 const VALID_PACKET_SHAPES    = new Set(['sphere', 'document', 'token', 'blob', 'envelope'])
-const VALID_ANNOTATION_TYPES = new Set(['callout', 'transform'])
+const VALID_ANNOTATION_TYPES  = new Set(['callout', 'transform'])
+const VALID_ANNOTATION_STYLES = new Set(['info', 'success', 'warning', 'error'])
 
 export function validateFlow(raw: unknown): FlowDefinition {
   const r = assertObject(raw, 'root')
@@ -105,6 +106,10 @@ export function validateFlow(raw: unknown): FlowDefinition {
         if (!VALID_ANNOTATION_TYPES.has(annType)) throw new Error(`Invalid annotation type: ${annType}`)
         assertString(ann['target'], 'annotation.target')
         assertString(ann['text'], 'annotation.text')
+        if (ann['style'] !== undefined) {
+          const annStyle = assertString(ann['style'], 'annotation.style')
+          if (!VALID_ANNOTATION_STYLES.has(annStyle)) throw new Error(`Invalid annotation style: ${annStyle}`)
+        }
       }
     }
     if (step['packet'] !== null && step['packet'] !== undefined) {

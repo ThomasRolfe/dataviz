@@ -32,6 +32,22 @@
   --transform-border:  rgba(0, 255, 204, 0.18);
   --popout-key:        rgba(255, 255, 255, 0.5);
   --popout-obj:        rgba(255, 255, 255, 0.4);
+  --callout-error-bg:      rgba(180, 30, 30, 0.22);
+  --callout-error-border:  rgba(255, 80, 80, 0.25);
+  --callout-error-accent:  rgba(255, 80, 80, 0.85);
+  --callout-error-fg:      #ffbbbb;
+  --callout-warning-bg:    rgba(160, 110, 0, 0.22);
+  --callout-warning-border:rgba(240, 180, 40, 0.25);
+  --callout-warning-accent:rgba(240, 180, 40, 0.90);
+  --callout-warning-fg:    #ffe4a0;
+  --callout-success-bg:    rgba(20, 130, 60, 0.22);
+  --callout-success-border:rgba(60, 220, 110, 0.25);
+  --callout-success-accent:rgba(60, 220, 110, 0.85);
+  --callout-success-fg:    #a0f0c0;
+  --callout-info-bg:       var(--panel-bg);
+  --callout-info-border:   var(--panel-border);
+  --callout-info-accent:   var(--accent-blue);
+  --callout-info-fg:       var(--text-primary);
 }
 
 [data-theme="light"] {
@@ -62,6 +78,22 @@
   --transform-border:  rgba(0, 140, 90, 0.20);
   --popout-key:        rgba(0, 0, 0, 0.40);
   --popout-obj:        rgba(0, 0, 0, 0.35);
+  --callout-error-bg:       rgba(220, 40, 40, 0.10);
+  --callout-error-border:   rgba(200, 60, 60, 0.25);
+  --callout-error-accent:   rgba(200, 30, 30, 0.90);
+  --callout-error-fg:       #7a1515;
+  --callout-warning-bg:     rgba(180, 110, 0, 0.10);
+  --callout-warning-border: rgba(180, 120, 0, 0.25);
+  --callout-warning-accent: rgba(160, 100, 0, 0.90);
+  --callout-warning-fg:     #5a3800;
+  --callout-success-bg:     rgba(10, 130, 60, 0.10);
+  --callout-success-border: rgba(10, 150, 60, 0.25);
+  --callout-success-accent: rgba(10, 130, 60, 0.90);
+  --callout-success-fg:     #0a4020;
+  --callout-info-bg:        var(--panel-bg);
+  --callout-info-border:    var(--panel-border);
+  --callout-info-accent:    var(--accent-blue);
+  --callout-info-fg:        var(--text-primary);
 }
 
 html, body, #root {

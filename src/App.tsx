@@ -33,8 +33,9 @@ function App() {
   const [engine, setEngine] = useState<StepEngine | null>(null)
   const [steps, setSteps]   = useState<Step[]>([])
   const [error, setError]   = useState<string | null>(null)
-  const [bridge, setBridge] = useState<OverlayBridge | null>(null)
-  const [theme, setTheme]   = useState<Theme>('light')
+  const [bridge, setBridge]             = useState<OverlayBridge | null>(null)
+  const [theme, setTheme]               = useState<Theme>('light')
+  const [arrivedTargets, setArrivedTargets] = useState<Set<string>>(new Set())
   const [zoneLabelData, setZoneLabelData] = useState<
     Array<{ label: string; position: Vector3; color: string }>
   >([])
@@ -64,6 +65,16 @@ function App() {
   useEffect(() => {
     if (!engine) return
     return engine.subscribe(state => {
+      const packetDefs = [
+        ...(state.step.packet  ? [state.step.packet]    : []),
+        ...(state.step.packets ?? []),
+      ]
+      // If no packets this step, show annotations immediately
+      if (packetDefs.length === 0) {
+        setArrivedTargets(new Set(state.step.annotations?.map(a => a.target) ?? []))
+      } else {
+        setArrivedTargets(new Set())
+      }
       sceneRef.current?.applyStep(state.step, null, 800)
     })
   }, [engine])
@@ -103,6 +114,9 @@ function App() {
           sceneRef.current = scene
           setBridge(b)
           scene.setHoverCallback(setHoveredId)
+          scene.setPacketArrivalCallback(targetId => {
+            setArrivedTargets(prev => new Set([...prev, targetId]))
+          })
           setZoneLabelData(scene.getZoneLabelData())
           setPipeLabelData(scene.getConnectionLabelData())
           const eng = engineRef.current
@@ -132,14 +146,13 @@ function App() {
         <PipeLabels pipes={pipeLabelData} bridge={bridge} />
       )}
 
-      {/* Per-step annotations with leader lines */}
-      {stepState?.step.annotations && stepState.step.annotations.length > 0 && bridge && (
-        <AnnotationOverlay
-          annotations={stepState.step.annotations}
-          graph={graph}
-          bridge={bridge}
-        />
-      )}
+      {/* Per-step annotations — deferred until the packet arrives at the target */}
+      {bridge && (() => {
+        const visible = stepState?.step.annotations?.filter(a => arrivedTargets.has(a.target)) ?? []
+        return visible.length > 0
+          ? <AnnotationOverlay annotations={visible} graph={graph} bridge={bridge} />
+          : null
+      })()}
 
       {hoveredId?.startsWith('__packet__') && sceneRef.current && bridge && (
         <PacketTooltip

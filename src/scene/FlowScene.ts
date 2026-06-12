@@ -31,8 +31,9 @@ export class FlowScene extends SceneManager {
   private packetPipeMap:   Map<DataPacket, string> = new Map()
   private arrivedPackets:  Set<DataPacket> = new Set()
   private penetratedIds:   Set<string> = new Set()
-  private hoverSystem:     HoverSystem
-  private overviewTarget:  THREE.Vector3
+  private hoverSystem:            HoverSystem
+  private packetArrivalCallback:  ((targetId: string) => void) | null = null
+  private overviewTarget:         THREE.Vector3
   private overviewFrustum: number
   private isPanning:       boolean = false
   private panLast:         THREE.Vector2 = new THREE.Vector2()
@@ -168,6 +169,10 @@ export class FlowScene extends SceneManager {
 
   setHoverCallback(fn: (id: string | null) => void): void {
     this.hoverSystem['onHoverChange'] = fn
+  }
+
+  setPacketArrivalCallback(fn: (targetId: string) => void): void {
+    this.packetArrivalCallback = fn
   }
 
   setTheme(theme: Theme): void {
@@ -342,6 +347,9 @@ export class FlowScene extends SceneManager {
             p => !p.arrived && this.packetPipeMap.get(p) === pipeId
           )
           if (!stillTraveling) this.pipes.get(pipeId)?.setPacketTraversing(false, 600)
+
+          const destId = this.graph.connections.get(pipeId)?.to.id
+          if (destId) this.packetArrivalCallback?.(destId)
         }
       }
     }
