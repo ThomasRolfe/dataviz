@@ -9,17 +9,17 @@ import type { ComponentMeshUserData } from '@/scene/meshUserData'
 export type MeshState = 'idle' | 'highlighted' | 'dimmed'
 
 export const TYPE_COLOR: Record<ComponentType, number> = {
-  client:   0x4a9edd,
-  service:  0x5dbe8a,
-  database: 0xe8a838,
-  queue:    0xb06bcc,
-  function: 0xe85d5d,
-  external: 0x888888,
+  client:   0x1e88e5,
+  service:  0x43a047,
+  database: 0xf57c00,
+  queue:    0x8e24aa,
+  function: 0xe53935,
+  external: 0x546e7a,
 }
 
 export const STATE_EMISSIVE: Record<MeshState, number> = {
   idle:        0x000000,
-  highlighted: 0x224422,
+  highlighted: 0x1a2a3a,
   dimmed:      0x000000,
 }
 

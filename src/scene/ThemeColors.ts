@@ -24,9 +24,9 @@ export const THEME_COLORS: Record<Theme, ThemeConfig> = {
     pipeActiveEmissive: 0x1a3a5c,
     packetColor:        0x00ffcc,
     ambientColor:       0xffeedd,
-    ambientIntensity:   0.6,
+    ambientIntensity:   0.9,
     fillColor:          0xaaccff,
-    fillIntensity:      0.4,
+    fillIntensity:      0.6,
   },
   light: {
     clearColor:         0xedf0f5,
@@ -37,8 +37,8 @@ export const THEME_COLORS: Record<Theme, ThemeConfig> = {
     pipeActiveEmissive: 0x000000,
     packetColor:        0x009966,
     ambientColor:       0xffffff,
-    ambientIntensity:   1.4,
+    ambientIntensity:   1.8,
     fillColor:          0xaaccff,
-    fillIntensity:      0.3,
+    fillIntensity:      0.5,
   },
 }

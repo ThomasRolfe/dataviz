@@ -13,7 +13,7 @@ export function setupLighting(scene: THREE.Scene, theme: Theme = 'light'): Scene
   const ambient = new THREE.AmbientLight(c.ambientColor, c.ambientIntensity)
   scene.add(ambient)
 
-  const key = new THREE.DirectionalLight(0xffffff, 1.2)
+  const key = new THREE.DirectionalLight(0xffffff, 2.2)
   key.position.set(-10, 20, 10)
   key.castShadow = true
   key.shadow.mapSize.set(2048, 2048)
