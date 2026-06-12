@@ -57,7 +57,7 @@ export class ComponentMesh {
 
     // Shared material — all visual meshes use this so transitions apply uniformly
     this.mat = new THREE.MeshStandardMaterial({
-      color:       TYPE_COLOR[component.type],
+      color:       component.color ? new THREE.Color(component.color) : TYPE_COLOR[component.type],
       transparent: true,
       opacity:     STATE_OPACITY['idle'],
     })

@@ -186,6 +186,7 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
       type:      c.type,
       shape:     c.shape,
       logo:      c.logo,
+      color:     c.color,
       center,
       meshSize,
       topCenter,
