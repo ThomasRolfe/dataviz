@@ -11,9 +11,10 @@ strict — invalid field names or values will silently break the visualisation.
 FlowViz produces an animated isometric 3D diagram. The viewer steps forward and
 backward through a sequence of states. At each step:
 
-- A subset of **components** (boxes, cylinders, etc.) are highlighted; others dim.
+- A subset of **components** (boxes, cylinders, logos, etc.) are highlighted; others dim.
 - A subset of **connections** (pipes between components) illuminate.
-- An optional **packet** (a glowing shape) travels along one connection.
+- An optional **packet** (a glowing shape) travels along one connection and, on
+  arrival, flashes a colour that reflects the outcome (success / error / warning).
 - Optional **annotation cards** appear with leader lines pointing to specific components.
 - The camera may pan and zoom to focus on a specific component.
 
@@ -64,8 +65,8 @@ screen space).
 
 **Sizing guidance:**
 - Default cell size is 3.0 world units. The camera auto-frames the full grid.
-- Use enough cols for the flow to spread horizontally. 8–14 is typical.
-- Use enough rows to separate parallel tracks. 4–8 is typical.
+- Use enough cols for the flow to spread horizontally. 8–16 is typical.
+- Use enough rows to separate parallel tracks. 4–10 is typical.
 - Leave empty cells — crowding is worse than padding.
 
 ---
@@ -73,7 +74,8 @@ screen space).
 ## 5. `zones`
 
 Zones are semi-transparent coloured regions on the ground plane that group
-related components. They have a label that appears in the top corner of the zone.
+related components. Each zone gets a label rendered as a flat coloured plate just
+outside the zone's top edge (folder-tab style).
 
 ```json
 {
@@ -87,8 +89,8 @@ related components. They have a label that appears in the top corner of the zone
 | Field    | Type   | Notes |
 |----------|--------|-------|
 | `id`     | string | Unique. Referenced nowhere else — for your own bookkeeping only. |
-| `label`  | string | Short (1–3 words). Shown as a rotated overlay label inside the zone. |
-| `color`  | string | Hex colour. Used for fill, border, and label. |
+| `label`  | string | Short (1–3 words). Rendered as a flat plate on the ground plane outside the zone's near edge. |
+| `color`  | string | Hex colour. Used for fill, border, and label background. |
 | `bounds` | object | `col`/`row` = top-left corner. `width`/`height` in grid cells. |
 
 **Zone sizing rule:** bounds should enclose all member components with at least
@@ -106,6 +108,8 @@ Each component maps to a 3D mesh in the scene.
   "id":       "auth_server",
   "label":    "Auth Server",
   "type":     "service",
+  "shape":    "server",
+  "color":    "#7c3a9d",
   "position": { "col": 5, "row": 2 },
   "size":     { "w": 2, "h": 1 },
   "meta": {
@@ -119,16 +123,85 @@ Each component maps to a 3D mesh in the scene.
 
 ### 6.1 Component types
 
-| `type`     | Geometry     | Visual height | Use for |
-|------------|--------------|---------------|---------|
-| `client`   | Box          | Short (0.8)   | Browser, mobile app, CLI tool, external consumer |
-| `service`  | Box          | Medium (1.2)  | Backend API, microservice, HTTP server |
-| `database` | Cylinder     | Tall (1.6)    | Any persistent store: SQL, NoSQL, cache, object storage |
-| `queue`    | Flat box     | Very flat (0.6) | Message broker, topic, event bus, FIFO queue |
-| `function` | Octahedron   | Minimal (0.5) | Serverless function, Lambda, background job, cron |
-| `external` | Box          | Standard (1.0)| Third-party system outside your control |
+| `type`     | Default geometry | Visual height | Use for |
+|------------|-----------------|---------------|---------|
+| `client`   | Box             | Short (0.8)   | Browser, mobile app, CLI tool, external consumer |
+| `service`  | Box             | Medium (1.2)  | Backend API, microservice, HTTP server |
+| `database` | Cylinder        | Tall (1.6)    | Any persistent store: SQL, NoSQL, cache, object storage |
+| `queue`    | Flat box        | Very flat (0.6) | Message broker, topic, event bus, FIFO queue |
+| `function` | Octahedron      | Minimal (0.5) | Serverless function, Lambda, background job, cron |
+| `external` | Box             | Standard (1.0)| Third-party system outside your control |
 
-### 6.2 `position`
+Default colours per type (overridable with `color`):
+- `client` → bright blue
+- `service` → green
+- `database` → amber/orange
+- `queue` → purple
+- `function` → red
+- `external` → slate blue-grey
+
+### 6.2 `shape` (optional)
+
+Overrides the component's 3D geometry with a recognisable silhouette. Mutually
+exclusive with `logo` — if both are present `logo` takes precedence.
+
+| `shape`      | Silhouette | Good for |
+|--------------|------------|---------|
+| `desktop`    | Monitor + stand | Desktop browsers, workstations |
+| `smartphone` | Phone body + button | Mobile clients |
+| `server`     | Rack unit + bezel | Physical or VM servers |
+| `stack`      | Three stacked disks | Database clusters, storage arrays |
+| `cloud`      | Blob cluster | Cloud services, PaaS |
+| `router`     | Box + three antennas | Network devices, API gateways |
+| `deskphone`  | Handset on base | Legacy telephony |
+| `wall`       | Brick pattern | Firewall, security boundary |
+
+### 6.3 `logo` (optional)
+
+Renders a Font Awesome **brands** icon as a flat 2D logo on the ground plane,
+filling ~90% of one grid cell. Replaces the type geometry entirely.
+
+```json
+{ "logo": "stripe" }
+{ "logo": "aws" }
+{ "logo": "github" }
+{ "logo": "slack" }
+{ "logo": "google" }
+```
+
+- Value must match a Font Awesome brands icon name in **camelCase-free lowercase**
+  (e.g. `"stripe"` → `faStripe`, `"aws"` → `faAws`).
+- The logo uses the same material colour as the component (controlled by `color`
+  or the default for the `type`). Set `color` to the brand's hex colour for
+  authentic branding.
+- Do not specify `shape` when using `logo` — `logo` takes precedence anyway.
+- Sizing: `size` defaults to `{ "w": 1, "h": 1 }`. A 1×1 component fills one
+  grid cell. Larger sizes fill proportionally.
+
+**Example — Stripe payment processor:**
+```json
+{
+  "id": "stripe", "label": "Stripe", "type": "external",
+  "logo": "stripe", "color": "#635BFF",
+  "position": { "col": 12, "row": 3 }
+}
+```
+
+### 6.4 `color` (optional)
+
+A CSS colour string that overrides the default type-based colour for this component.
+
+```json
+{ "color": "#FF9900" }
+```
+
+- Accepts any CSS hex string: `"#rgb"`, `"#rrggbb"`.
+- Use for brand colours on `logo` components, or to visually distinguish components
+  of the same type.
+- The color applies to the mesh material — it affects the component's 3D geometry
+  and all highlight/dim transitions.
+
+### 6.5 `position`
 
 `col` and `row` are the top-left corner of the component's footprint.
 
@@ -136,7 +209,7 @@ Each component maps to a 3D mesh in the scene.
 needed — only use it for components that are conceptually "above" others (e.g. an
 API gateway hovering over backend services in an architectural diagram).
 
-### 6.3 `size`
+### 6.6 `size`
 
 Optional. `w` is width in grid cells (along the col axis). `h` is depth in grid
 cells (along the row axis). Both default to 1.
@@ -145,7 +218,7 @@ Use `size.w > 1` for components that are architecturally central, handle many
 connections, or need visual prominence. `{ "w": 2, "h": 1 }` is a common choice
 for services with multiple inbound connections.
 
-### 6.4 `meta`
+### 6.7 `meta`
 
 All fields optional. Shown in the hover tooltip when the user hovers the component.
 
@@ -159,6 +232,7 @@ All fields optional. Shown in the hover tooltip when the user hovers the compone
 ## 7. `connections`
 
 Each connection is rendered as a pipe (tube geometry) between two components.
+The `label` is shown as a small HTML overlay at the pipe's midpoint.
 
 ```json
 {
@@ -175,15 +249,16 @@ Each connection is rendered as a pipe (tube geometry) between two components.
 | `id`    | Unique. Referenced in steps (`active_connections`) and packets (`connection`). |
 | `from`  | Component id. |
 | `to`    | Component id. |
-| `label` | Optional. Names the operation (e.g. `"POST /api/events"`, `"INSERT INTO orders"`). |
-| `route` | `"auto"` for automatic L-shape routing, or an array of `{ "col": n, "row": n }` waypoints. |
+| `label` | Optional. Names the protocol or operation (e.g. `"POST /api/events"`, `"INSERT INTO orders"`). Rendered at the pipe midpoint, always visible. |
+| `route` | `"auto"` for smooth S-curve routing, or an array of `{ "col": n, "row": n }` waypoints. |
 
 **Routing guidance:**
-- Always start with `"auto"`. The engine routes via the midpoint between source
-  and destination to avoid most crossings.
+- `"auto"` produces a smooth cubic-Bezier S-curve: the pipe exits the source
+  horizontally in X, curves, and arrives at the destination along Z. This avoids
+  the diagonal kink that a corner-waypoint approach produces.
 - Add explicit waypoints only when the auto route visually crosses through an
   unrelated component. Waypoints are intermediate grid positions the pipe must
-  pass through.
+  pass through (CatmullRom through all points).
 - Model each direction of data transfer as a separate connection. If A calls B
   and B responds to A, use two connections: `a_to_b` and `b_to_a`.
 
@@ -228,13 +303,13 @@ state — the viewer sees the full architecture before anything happens.
       "text":   "window.location.href = authUrl"
     }
   ],
-  "popouts": [],
   "packet": {
-    "connection": "c_auth_redirect",
-    "shape":      "envelope",
+    "connection":   "c_auth_redirect",
+    "shape":        "envelope",
+    "arrivalStyle": "success",
     "data": {
-      "response_type": "code",
-      "client_id":     "app_123",
+      "response_type":  "code",
+      "client_id":      "app_123",
       "code_challenge": "S256..."
     }
   }
@@ -362,8 +437,9 @@ after arrival until the next step. The user can hover it to inspect the payload.
 
 ```json
 {
-  "connection": "c1",
-  "shape":      "document",
+  "connection":   "c1",
+  "shape":        "document",
+  "arrivalStyle": "success",
   "data": {
     "event":     "button_click",
     "userId":    "u_9f3a",
@@ -376,18 +452,27 @@ Use `null` (or omit the field) for steps with no data-in-flight.
 
 **Packet shape vocabulary:**
 
-| `shape`    | Geometry  | Semantic meaning |
-|------------|-----------|-----------------|
-| `sphere`   | Sphere    | Generic event, message, or notification |
-| `document` | Flat box  | JSON body, HTTP request/response, structured record |
-| `token`    | Flat disk | Auth token, JWT, session key, API key |
-| `blob`     | Squashed sphere | Binary data, file content, image |
-| `envelope` | Wide flat box | HTTP redirect, wrapped response, message envelope |
+| `shape`    | Geometry       | Semantic meaning |
+|------------|----------------|-----------------|
+| `sphere`   | Sphere         | Generic event, message, or notification |
+| `document` | Flat box       | JSON body, HTTP request/response, structured record |
+| `token`    | Flat disk      | Auth token, JWT, session key, API key |
+| `blob`     | Squashed sphere| Binary data, file content, image |
+| `envelope` | Wide flat box  | HTTP redirect, wrapped response, message envelope |
 
-**Choosing a shape:** match the semantic type of the data, not the transport.
-A JWT sent over HTTP is a `token`, not a `document`. A JSON event payload sent
-over a message queue is a `document`, not an `envelope`. An HTTP 302 redirect is
-an `envelope`.
+**`arrivalStyle` (optional):**
+
+When the packet arrives at its destination, its colour animates from the
+default cyan/green to a semantic colour reflecting the outcome:
+
+| `arrivalStyle` | Arrival colour | When to use |
+|----------------|---------------|-------------|
+| `"success"`    | Bright green  | Request accepted, validation passed, event written |
+| `"error"`      | Bright red    | Request rejected, validation failed, connection refused |
+| `"warning"`    | Amber/orange  | Rate-limited, quota exceeded, partial success |
+
+Omit `arrivalStyle` (or set to `null`) when the transfer outcome is neutral or
+context-independent.
 
 **`data` field:** include the actual representative payload structure. Keys and
 values are shown verbatim in the hover tooltip. Use realistic values, not
@@ -410,7 +495,7 @@ path on one row and the error path on a different row.
 ### 9.3 Grouping by trust/deployment boundary
 
 Put components that belong to the same service boundary, deployment unit, or
-trust zone in the same zone. A zone should contain 1–4 components. More than
+trust zone in the same zone. A zone should contain 1–5 components. More than
 that is a sign the zone is too broad.
 
 ### 9.4 Spacing
@@ -420,7 +505,7 @@ at the very edge of a zone will visually clip the zone border.
 
 ### 9.5 Connection crossings
 
-Auto-routing produces L-shaped paths. Crossings are inevitable when flows
+Auto-routing produces smooth S-curves. Crossings are inevitable when flows
 branch back leftward. To reduce crossings:
 - Route "return" connections (responses) above or below the "request" connections.
 - Use `size.h > 1` on components that need space for multiple ports.
@@ -460,7 +545,7 @@ Step N: Final state (highlight destination, camera zoom)
 
 ```
 Step 0: Overview
-Step 1: Client sends request (highlight client + server, packet: document)
+Step 1: Client sends request (highlight client + server, packet: document, arrivalStyle: success)
 Step 2: Server processes (highlight server, transform annotation)
 Step 3: Server responds (highlight server + client, packet: envelope, reverse connection)
 Step 4: Client handles response (highlight client, callout annotation)
@@ -474,6 +559,15 @@ Step 1: Event fires at source
 Step 2: Source publishes to queue (packet: sphere/envelope)
 Step 3: Multiple consumers receive (highlight queue + all consumers, multiple active_connections)
 Step 4: Each consumer processes independently (separate steps per consumer)
+```
+
+### Pattern 4: Error path
+
+```
+Step N:   Happy path (packet with arrivalStyle: success)
+Step N+1: Error condition triggers (highlight failing component, callout annotation)
+Step N+2: Error response returned (packet with arrivalStyle: error)
+Step N+3: Retry or fallback (packet with arrivalStyle: warning)
 ```
 
 ---
@@ -502,12 +596,21 @@ Step 4: Each consumer processes independently (separate steps per consumer)
    highlight, active_connections, camera, annotations, or packet. A step that
    changes nothing confuses the viewer.
 
-7. **Too many steps.** Aim for 5–10 steps per flow. More than 12 is hard to
+7. **Too many steps.** Aim for 6–12 steps per flow. More than 14 is hard to
    follow. If the flow has more meaningful events, split it into multiple flows.
 
 8. **Reusing connection ids for return paths.** A connection has a fixed `from`
    and `to`. For a response traveling the reverse direction, define a separate
    connection with `from` and `to` swapped.
+
+9. **`logo` without `color`.** Logo components render using the type's default
+   colour, which may not match the brand. Always pair `logo` with the brand's hex
+   `color` (e.g. Stripe → `"#635BFF"`, AWS → `"#FF9900"`, Slack → `"#4A154B"`).
+
+10. **Missing `arrivalStyle` on outcome steps.** When a packet represents a
+    request that could succeed or fail, always set `arrivalStyle` to `"success"`,
+    `"error"`, or `"warning"`. Omitting it leaves the packet colour neutral, which
+    misses an opportunity to communicate the outcome visually.
 
 ---
 
@@ -524,27 +627,22 @@ A minimal but complete example illustrating all features.
   "layout": { "grid": { "cols": 10, "rows": 6 } },
   "zones": [
     {
-      "id": "z_client",
-      "label": "Browser",
-      "color": "#4a9edd",
+      "id": "z_client", "label": "Browser", "color": "#4a9edd",
       "bounds": { "col": 0, "row": 1, "width": 2, "height": 4 }
     },
     {
-      "id": "z_ingest",
-      "label": "Ingest Layer",
-      "color": "#5dbe8a",
+      "id": "z_ingest", "label": "Ingest Layer", "color": "#5dbe8a",
       "bounds": { "col": 3, "row": 0, "width": 4, "height": 6 }
     },
     {
-      "id": "z_storage",
-      "label": "Storage Layer",
-      "color": "#e8a838",
+      "id": "z_storage", "label": "Storage Layer", "color": "#e8a838",
       "bounds": { "col": 8, "row": 1, "width": 2, "height": 4 }
     }
   ],
   "components": [
     {
       "id": "browser", "label": "Browser Client", "type": "client",
+      "shape": "desktop",
       "position": { "col": 1, "row": 3 },
       "meta": { "description": "React SPA. Fires analytics events on user interaction." }
     },
@@ -586,7 +684,7 @@ A minimal but complete example illustrating all features.
       "annotations": [
         { "type": "callout", "target": "browser", "text": "analytics.track('button_click', { id: 'cta' })" }
       ],
-      "popouts": [], "packet": null
+      "packet": null
     },
     {
       "id": 2, "name": "Send to Collector",
@@ -594,8 +692,11 @@ A minimal but complete example illustrating all features.
       "description": "SDK serializes the event and POSTs it to the collector endpoint.",
       "highlight": ["browser", "collector"], "active_connections": ["c1"],
       "camera": { "focus": null },
-      "annotations": [], "popouts": [],
-      "packet": { "connection": "c1", "shape": "document", "data": { "event": "button_click", "userId": "u_9f3a", "timestamp": 1718000000000 } }
+      "packet": {
+        "connection": "c1", "shape": "document",
+        "arrivalStyle": "success",
+        "data": { "event": "button_click", "userId": "u_9f3a", "timestamp": 1718000000000 }
+      }
     },
     {
       "id": 3, "name": "Validate & batch",
@@ -606,7 +707,7 @@ A minimal but complete example illustrating all features.
       "annotations": [
         { "type": "transform", "target": "collector", "text": "validate() → enrich({ ip, serverTs }) → produce()" }
       ],
-      "popouts": [], "packet": null
+      "packet": null
     },
     {
       "id": 4, "name": "Publish to Kafka",
@@ -614,8 +715,11 @@ A minimal but complete example illustrating all features.
       "description": "Enriched event produced to the telemetry-events topic, keyed by userId.",
       "highlight": ["collector", "kafka"], "active_connections": ["c2"],
       "camera": { "focus": null },
-      "annotations": [], "popouts": [],
-      "packet": { "connection": "c2", "shape": "envelope", "data": { "topic": "telemetry-events", "partition": 3, "key": "u_9f3a" } }
+      "packet": {
+        "connection": "c2", "shape": "envelope",
+        "arrivalStyle": "success",
+        "data": { "topic": "telemetry-events", "partition": 3, "key": "u_9f3a" }
+      }
     },
     {
       "id": 5, "name": "Write to ClickHouse",
@@ -623,8 +727,11 @@ A minimal but complete example illustrating all features.
       "description": "A Kafka consumer reads the event and inserts it into ClickHouse.",
       "highlight": ["kafka", "clickhouse"], "active_connections": ["c3"],
       "camera": { "focus": null },
-      "annotations": [], "popouts": [],
-      "packet": { "connection": "c3", "shape": "document", "data": { "event": "button_click", "userId": "u_9f3a" } }
+      "packet": {
+        "connection": "c3", "shape": "document",
+        "arrivalStyle": "success",
+        "data": { "event": "button_click", "userId": "u_9f3a" }
+      }
     },
     {
       "id": 6, "name": "Data at rest",
@@ -635,7 +742,7 @@ A minimal but complete example illustrating all features.
       "annotations": [
         { "type": "callout", "target": "clickhouse", "text": "SELECT count() FROM events WHERE event = 'button_click'" }
       ],
-      "popouts": [], "packet": null
+      "packet": null
     }
   ]
 }
@@ -661,23 +768,25 @@ Before returning a flow JSON, verify each of these:
 - [ ] Steps with a `packet` also have the packet's `connection` in `active_connections`
 - [ ] Data flows left-to-right (increasing col) in the general case
 - [ ] `packet.data` contains realistic representative values, not placeholders
+- [ ] `logo` components also have a `color` matching the brand's hex colour
+- [ ] Packets with a meaningful outcome have `arrivalStyle` set
 
 ---
 
-## 14. Version note
-
-This guide reflects FlowViz capabilities as of the current build. Features marked
-**"not yet rendered"** are accepted by the schema but produce no visual output in
-the current version. Do not omit them — they will activate in future releases
-without requiring schema changes.
+## 14. Feature status
 
 | Feature | Status |
 |---------|--------|
-| Component meshes (all types) | ✅ Rendered |
+| Component meshes (all 6 types) | ✅ Rendered |
+| Component `shape` override (8 shapes) | ✅ Rendered |
+| Component `logo` (Font Awesome brands) | ✅ Rendered |
+| Component `color` override | ✅ Rendered |
 | Connection pipes | ✅ Rendered |
-| Zone fills + labels | ✅ Rendered |
+| Connection `label` overlay at midpoint | ✅ Rendered |
+| Zone fills + 3D ground-plane labels | ✅ Rendered |
 | Step highlight / dim transitions | ✅ Rendered |
 | Packet animation + hover tooltip | ✅ Rendered |
+| Packet `arrivalStyle` colour flash | ✅ Rendered |
 | Annotation cards with leader lines | ✅ Rendered (`callout`, `transform`) |
 | Camera pan + zoom per step | ✅ Rendered |
 | Scroll-wheel zoom | ✅ Interactive |
@@ -686,5 +795,4 @@ without requiring schema changes.
 | Step sidebar with jump-to navigation | ✅ Interactive |
 | `step.name` sidebar label | ✅ Rendered (falls back to `title`) |
 | Popout panels | 🔲 Schema accepted, not yet rendered |
-| Connection labels | 🔲 Schema accepted, not yet rendered |
 | Elevation (`position.elevation`) | 🔲 Schema accepted, not yet rendered |
