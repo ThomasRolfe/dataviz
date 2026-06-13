@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { PacketShape, ComponentShape, ComponentType } from '@/types/schema'
+import { buildSolidIconMeshes } from '@/scene/IconMesh'
 
 // ── Packet geometry registry ──────────────────────────────────────────────────
 // Each factory returns a fresh BufferGeometry. Add new shapes here.
@@ -74,19 +75,7 @@ function buildServer(size: THREE.Vector3, mat: THREE.MeshStandardMaterial): THRE
 }
 
 function buildDesktop(size: THREE.Vector3, mat: THREE.MeshStandardMaterial): THREE.Mesh[] {
-  const monitor = new THREE.Mesh(
-    new THREE.BoxGeometry(size.x * 0.88, size.y * 0.54, size.z * 0.07), mat)
-  monitor.position.set(0, size.y * 0.18, 0)
-
-  const neck = new THREE.Mesh(
-    new THREE.BoxGeometry(size.x * 0.06, size.y * 0.22, size.z * 0.06), mat)
-  neck.position.set(0, -size.y * 0.18, 0)
-
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(size.x * 0.50, size.y * 0.06, size.z * 0.32), mat)
-  base.position.set(0, -size.y * 0.30, 0)
-
-  return [monitor, neck, base]
+  return buildSolidIconMeshes('desktop', size, mat)
 }
 
 function buildSmartphone(size: THREE.Vector3, mat: THREE.MeshStandardMaterial): THREE.Mesh[] {
