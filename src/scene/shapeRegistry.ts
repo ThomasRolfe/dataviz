@@ -24,7 +24,7 @@ export function buildPacketGeometry(shape: PacketShape): THREE.BufferGeometry {
 // ── Component shape registry ──────────────────────────────────────────────────
 // Each builder returns an array of positioned mesh parts. Add new shapes here.
 
-type ShapeBuilder = (size: THREE.Vector3, mat: THREE.MeshStandardMaterial) => THREE.Mesh[]
+type ShapeBuilder = (size: THREE.Vector3, mat: THREE.MeshStandardMaterial, iconMat: THREE.MeshBasicMaterial) => THREE.Mesh[]
 
 function buildStack(size: THREE.Vector3, mat: THREE.MeshStandardMaterial): THREE.Mesh[] {
   const r     = Math.min(size.x, size.z) * 0.42
@@ -74,8 +74,8 @@ function buildServer(size: THREE.Vector3, mat: THREE.MeshStandardMaterial): THRE
   return [body, bezel, bay]
 }
 
-function buildDesktop(size: THREE.Vector3, mat: THREE.MeshStandardMaterial): THREE.Mesh[] {
-  return buildSolidIconMeshes('desktop', size, mat)
+function buildDesktop(size: THREE.Vector3, mat: THREE.MeshStandardMaterial, iconMat: THREE.MeshBasicMaterial): THREE.Mesh[] {
+  return buildSolidIconMeshes('desktop', size, mat, iconMat)
 }
 
 function buildSmartphone(size: THREE.Vector3, mat: THREE.MeshStandardMaterial): THREE.Mesh[] {
@@ -185,14 +185,15 @@ function buildTypeMesh(
 }
 
 export function buildShapeMeshes(
-  type: ComponentType,
-  shape: ComponentShape | undefined,
-  size: THREE.Vector3,
-  mat: THREE.MeshStandardMaterial,
+  type:    ComponentType,
+  shape:   ComponentShape | undefined,
+  size:    THREE.Vector3,
+  mat:     THREE.MeshStandardMaterial,
+  iconMat: THREE.MeshBasicMaterial,
 ): THREE.Mesh[] {
   if (shape) {
     const builder = COMPONENT_SHAPE_BUILDERS[shape]
-    if (builder) return builder(size, mat)
+    if (builder) return builder(size, mat, iconMat)
   }
   return buildTypeMesh(type, size, mat)
 }

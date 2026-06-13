@@ -38,6 +38,7 @@ export class ComponentMesh {
   id:        string
 
   private mat:          THREE.MeshStandardMaterial
+  private iconMat:      THREE.MeshBasicMaterial
   private currentState: MeshState = 'idle'
   private penetrated:   boolean   = false
 
@@ -47,7 +48,6 @@ export class ComponentMesh {
 
     const { x: w, y: h, z: d } = component.meshSize
 
-    // Group sits with its origin at the component's vertical midpoint
     this.group = new THREE.Group()
     this.group.position.set(
       component.center.x,
@@ -55,24 +55,30 @@ export class ComponentMesh {
       component.center.z,
     )
 
-    // Shared material — all visual meshes use this so transitions apply uniformly
+    // Box/shape material — component colour, drives all opacity/emissive transitions
     this.mat = new THREE.MeshStandardMaterial({
       color:       component.color ? new THREE.Color(component.color) : TYPE_COLOR[component.type],
       transparent: true,
       opacity:     STATE_OPACITY['idle'],
     })
 
-    // Visual meshes centered at group origin (y spans -h/2 → +h/2)
+    // Icon face material — always white so the SVG reads against the coloured box
+    this.iconMat = new THREE.MeshBasicMaterial({
+      color:       0xffffff,
+      transparent: true,
+      opacity:     STATE_OPACITY['idle'],
+    })
+
     const visualMeshes = component.logo
-      ? buildLogoMeshes(component.logo, component.meshSize, this.mat)
-      : buildShapeMeshes(component.type, component.shape, component.meshSize, this.mat)
+      ? buildLogoMeshes(component.logo, component.meshSize, this.mat, this.iconMat)
+      : buildShapeMeshes(component.type, component.shape, component.meshSize, this.mat, this.iconMat)
     for (const m of visualMeshes) {
       m.castShadow    = true
       m.receiveShadow = true
       this.group.add(m)
     }
 
-    // Invisible hit box for raycasting — full bounding box, no render
+    // Invisible hit box for raycasting
     this.hitMesh = new THREE.Mesh(
       new THREE.BoxGeometry(w, h, d),
       new THREE.MeshBasicMaterial({ visible: false }),
@@ -99,8 +105,9 @@ export class ComponentMesh {
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(({ opacity, r, g, b }) => {
           if (!this.penetrated) {
-            this.mat.opacity     = opacity
-            this.mat.transparent = opacity < 1.0
+            this.mat.opacity      = opacity
+            this.mat.transparent  = opacity < 1.0
+            this.iconMat.opacity  = opacity
           }
           this.mat.emissive.setRGB(r, g, b)
         })
@@ -109,16 +116,17 @@ export class ComponentMesh {
     })
   }
 
-  // Called from FlowScene.onFrame — runs after TWEEN.update() so always wins.
   setPenetrated(penetrated: boolean): void {
     if (this.penetrated === penetrated) return
     this.penetrated = penetrated
     if (penetrated) {
       this.mat.opacity     = PENETRATED_OPACITY
       this.mat.transparent = true
+      this.iconMat.opacity = PENETRATED_OPACITY
     } else {
       this.mat.opacity     = STATE_OPACITY[this.currentState]
       this.mat.transparent = this.mat.opacity < 1.0
+      this.iconMat.opacity = STATE_OPACITY[this.currentState]
     }
   }
 
@@ -127,6 +135,7 @@ export class ComponentMesh {
     this.hitMesh.geometry.dispose()
     ;(this.hitMesh.material as THREE.Material).dispose()
     this.mat.dispose()
+    this.iconMat.dispose()
     for (const child of this.group.children) {
       if (child instanceof THREE.Mesh && child !== this.hitMesh) {
         child.geometry.dispose()
