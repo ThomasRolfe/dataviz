@@ -45,7 +45,7 @@ function App() {
   const engineRef = useRef<StepEngine | null>(null)
 
   useEffect(() => {
-    loadFlow('telemetry-ingestion')
+    loadFlow('ecommerce-platform')
       .then((def) => {
         const g = buildGraph(def)
         setGraph(g)
