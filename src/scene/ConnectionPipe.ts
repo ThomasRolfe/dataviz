@@ -5,8 +5,8 @@ import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
 
 const TUBE_SEGMENTS    = 64
-const TUBE_RADIUS      = 0.06
-const TUBE_RADIUS_SEGS = 8
+const TUBE_RADIUS      = 0.18
+const TUBE_RADIUS_SEGS = 10
 
 const OPACITY_IDLE       = 0.20
 const OPACITY_ACTIVE     = 0.45
