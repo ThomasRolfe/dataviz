@@ -32,6 +32,7 @@ const VALID_PACKET_SHAPES     = new Set(['sphere', 'document', 'token', 'blob', 
 const VALID_ANNOTATION_TYPES  = new Set(['callout', 'transform'])
 const VALID_ANNOTATION_STYLES = new Set(['info', 'success', 'warning', 'error'])
 const VALID_ARRIVAL_STYLES    = new Set(['error', 'success', 'warning'])
+const VALID_DIRECTIONS        = new Set(['forward', 'reverse'])
 
 export function validateFlow(raw: unknown): FlowDefinition {
   const r = assertObject(raw, 'root')
@@ -123,6 +124,10 @@ export function validateFlow(raw: unknown): FlowDefinition {
         const as_ = assertString(packet['arrivalStyle'], 'packet.arrivalStyle')
         if (!VALID_ARRIVAL_STYLES.has(as_)) throw new Error(`Invalid packet arrivalStyle: ${as_}`)
       }
+      if (packet['direction'] !== undefined) {
+        const dir = assertString(packet['direction'], 'packet.direction')
+        if (!VALID_DIRECTIONS.has(dir)) throw new Error(`Invalid packet direction: ${dir}`)
+      }
     }
     if (step['packets'] !== undefined) {
       const packets = assertArray(step['packets'], 'step.packets')
@@ -135,6 +140,10 @@ export function validateFlow(raw: unknown): FlowDefinition {
         if (pkt['arrivalStyle'] !== undefined) {
           const as_ = assertString(pkt['arrivalStyle'], 'packets[].arrivalStyle')
           if (!VALID_ARRIVAL_STYLES.has(as_)) throw new Error(`Invalid packets[].arrivalStyle: ${as_}`)
+        }
+        if (pkt['direction'] !== undefined) {
+          const dir = assertString(pkt['direction'], 'packets[].direction')
+          if (!VALID_DIRECTIONS.has(dir)) throw new Error(`Invalid packets[].direction: ${dir}`)
         }
       }
     }
@@ -216,7 +225,7 @@ function computePortOffsets(
     })
   }
 
-  function avgDirection(connIds: string[], fromId: string, isSource: boolean): THREE.Vector2 {
+  function avgDirection(connIds: string[]): THREE.Vector2 {
     let ax = 0, az = 0
     for (const id of connIds) {
       const c    = connById.get(id)!
@@ -233,8 +242,8 @@ function computePortOffsets(
   }
 
   // Spread arrivals at each destination
-  for (const [destId, ids] of byDest) {
-    const dir = avgDirection(ids, destId, false)
+  for (const [, ids] of byDest) {
+    const dir = avgDirection(ids)
     spreadGroup(
       ids,
       id => components.get(connById.get(id)!.from)!.center,
@@ -244,8 +253,8 @@ function computePortOffsets(
   }
 
   // Spread departures from each source
-  for (const [srcId, ids] of bySrc) {
-    const dir = avgDirection(ids, srcId, true)
+  for (const [, ids] of bySrc) {
+    const dir = avgDirection(ids)
     spreadGroup(
       ids,
       id => components.get(connById.get(id)!.to)!.center,

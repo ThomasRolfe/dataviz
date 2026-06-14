@@ -14,6 +14,7 @@ const ARRIVAL_COLORS: Record<ArrivalStyle, number> = {
 export class DataPacket {
   mesh:         THREE.Mesh
   arrived:      boolean = false
+  reversed:     boolean = false
   private curve:        THREE.Curve<THREE.Vector3> | null = null
   private startTime:    number = -1
   private duration:     number = 0
@@ -48,12 +49,13 @@ export class DataPacket {
     mat.emissive.setHex(color)
   }
 
-  travel(curve: THREE.Curve<THREE.Vector3>, durationMs: number): Promise<void> {
+  travel(curve: THREE.Curve<THREE.Vector3>, durationMs: number, reversed = false): Promise<void> {
     this.curve     = curve
     this.duration  = durationMs
+    this.reversed  = reversed
     this.startTime = performance.now()
     this.arrived   = false
-    this.mesh.position.copy(curve.getPointAt(0))
+    this.mesh.position.copy(curve.getPointAt(reversed ? 1 : 0))
     return new Promise(resolve => { this.onDone = resolve })
   }
 
@@ -62,16 +64,18 @@ export class DataPacket {
 
     const elapsed = now - this.startTime
     const raw     = Math.min(elapsed / this.duration, 1)
-    const t       = raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw
+    const eased   = raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw
+    const t       = this.reversed ? 1 - eased : eased
 
     const pos = this.curve.getPointAt(t)
     this.mesh.position.copy(pos)
 
     const tangent = this.curve.getTangentAt(t)
     if (tangent.lengthSq() > 0) {
+      const dir = this.reversed ? tangent.negate() : tangent
       this.mesh.quaternion.setFromUnitVectors(
         new THREE.Vector3(0, 1, 0),
-        tangent.normalize()
+        dir.normalize()
       )
     }
 

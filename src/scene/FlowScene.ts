@@ -264,7 +264,7 @@ export class FlowScene extends SceneManager {
       this.activePackets.push(packet)
       this.packetPipeMap.set(packet, def.connection)
       pipe.setPacketTraversing(true, 200)
-      packet.travel(pipe.curve, PACKET_TRAVEL_MS)
+      packet.travel(pipe.curve, PACKET_TRAVEL_MS, def.direction === 'reverse')
     })
   }
 
@@ -369,7 +369,8 @@ export class FlowScene extends SceneManager {
           )
           if (!stillTraveling) this.pipes.get(pipeId)?.setPacketTraversing(false, PIPE_DIM_DELAY_MS)
 
-          const destId = this.graph.connections.get(pipeId)?.to.id
+          const conn   = this.graph.connections.get(pipeId)
+          const destId = packet.reversed ? conn?.from.id : conn?.to.id
           if (destId) this.packetArrivalCallback?.(destId)
         }
       }

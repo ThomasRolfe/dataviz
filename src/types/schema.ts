@@ -92,6 +92,7 @@ export type ArrivalStyle  = 'error' | 'success' | 'warning'
 export interface Packet {
   connection:    string
   shape:         PacketShape
+  direction?:    'forward' | 'reverse'
   data?:         Record<string, unknown>
   arrivalStyle?: ArrivalStyle
 }
