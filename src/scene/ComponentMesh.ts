@@ -31,6 +31,15 @@ export const STATE_OPACITY: Record<MeshState, number> = {
 
 const PENETRATED_OPACITY = 0.30
 
+// WCAG relative luminance — pick whichever of white/black has higher contrast with the box colour.
+function contrastingIconColor(boxColor: THREE.Color): number {
+  const lin = (c: number) =>
+    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  const L = 0.2126 * lin(boxColor.r) + 0.7152 * lin(boxColor.g) + 0.0722 * lin(boxColor.b)
+  // crossover point L ≈ 0.179 — below it white wins, above it black wins
+  return L < 0.179 ? 0xffffff : 0x111111
+}
+
 export class ComponentMesh {
   group:     THREE.Group
   hitMesh:   THREE.Mesh
@@ -62,9 +71,9 @@ export class ComponentMesh {
       opacity:     STATE_OPACITY['idle'],
     })
 
-    // Icon face material — always white so the SVG reads against the coloured box
+    // Icon face — white or near-black depending on which has higher WCAG contrast with the box
     this.iconMat = new THREE.MeshBasicMaterial({
-      color:       0xffffff,
+      color:       contrastingIconColor(this.mat.color),
       transparent: true,
       opacity:     STATE_OPACITY['idle'],
     })
