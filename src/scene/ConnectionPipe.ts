@@ -5,12 +5,12 @@ import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
 
 const TUBE_SEGMENTS    = 64
-const TUBE_RADIUS      = 0.18
-const TUBE_RADIUS_SEGS = 10
+const TUBE_RADIUS      = 0.35  // wide enough to contain the packet sphere
+const TUBE_RADIUS_SEGS = 12
 
-const OPACITY_IDLE       = 0.20
-const OPACITY_ACTIVE     = 0.45
-const OPACITY_TRAVERSING = 1.00
+const OPACITY_IDLE       = 0.12  // nearly invisible glass at rest
+const OPACITY_ACTIVE     = 0.28  // lit but still transparent
+const OPACITY_TRAVERSING = 0.50  // glowing glass — still see-through
 
 export class ConnectionPipe {
   mesh:     THREE.Mesh
@@ -44,10 +44,14 @@ export class ConnectionPipe {
       color:       this.idleColor,
       transparent: true,
       opacity:     OPACITY_IDLE,
+      roughness:   0,              // smooth glass surface
+      metalness:   0,
+      side:        THREE.DoubleSide,  // renders inner + outer wall → hollow cylinder illusion
+      depthWrite:  false,          // prevents z-sort artifacts between overlapping tubes
     })
     this.mesh = new THREE.Mesh(geo, mat)
-    this.mesh.castShadow    = true
-    this.mesh.receiveShadow = true
+    this.mesh.castShadow    = false
+    this.mesh.receiveShadow = false
     scene.add(this.mesh)
 
     this.midpoint = connection.curve.getPointAt(0.5)

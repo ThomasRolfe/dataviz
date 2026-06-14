@@ -5,6 +5,9 @@ import { buildPacketGeometry } from '@/scene/shapeRegistry'
 import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
 
+// Small sphere that travels inside the tube.  Must fit within TUBE_RADIUS (0.35).
+const TRAVEL_SPHERE_RADIUS = 0.13
+
 const ARRIVAL_COLORS: Record<ArrivalStyle, number> = {
   error:   0xff4444,
   success: 0x44ee88,
@@ -15,6 +18,8 @@ export class DataPacket {
   mesh:         THREE.Mesh
   arrived:      boolean = false
   reversed:     boolean = false
+  private travelGeo:    THREE.BufferGeometry
+  private arrivalGeo:   THREE.BufferGeometry
   private curve:        THREE.Curve<THREE.Vector3> | null = null
   private startTime:    number = -1
   private duration:     number = 0
@@ -23,14 +28,17 @@ export class DataPacket {
 
   constructor(scene: THREE.Scene, shape: PacketShape, theme: Theme = 'dark') {
     const color = THEME_COLORS[theme].packetColor
+    this.travelGeo  = new THREE.SphereGeometry(TRAVEL_SPHERE_RADIUS, 16, 12)
+    this.arrivalGeo = buildPacketGeometry(shape)
+
     this.mesh = new THREE.Mesh(
-      buildPacketGeometry(shape),
+      this.travelGeo,
       new THREE.MeshStandardMaterial({
         color,
         emissive:          new THREE.Color(color),
-        emissiveIntensity: 1.5,
-        metalness:         0.2,
-        roughness:         0.1,
+        emissiveIntensity: 2.5,  // bright enough to glow visibly through tube walls
+        metalness:         0.1,
+        roughness:         0.05,
       })
     )
     scene.add(this.mesh)
@@ -41,7 +49,6 @@ export class DataPacket {
   }
 
   setTheme(theme: Theme): void {
-    // Don't override arrival color once packet has landed
     if (this.arrived && this.arrivalColor !== null) return
     const color = THEME_COLORS[theme].packetColor
     const mat   = this.mesh.material as THREE.MeshStandardMaterial
@@ -55,6 +62,12 @@ export class DataPacket {
     this.reversed  = reversed
     this.startTime = performance.now()
     this.arrived   = false
+
+    // Ensure we're using the travel sphere while in the tube
+    this.mesh.geometry = this.travelGeo
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    mat.emissiveIntensity = 2.5
+
     this.mesh.position.copy(curve.getPointAt(reversed ? 1 : 0))
     return new Promise(resolve => { this.onDone = resolve })
   }
@@ -70,6 +83,7 @@ export class DataPacket {
     const pos = this.curve.getPointAt(t)
     this.mesh.position.copy(pos)
 
+    // Align sphere to curve tangent so it doesn't visibly rotate
     const tangent = this.curve.getTangentAt(t)
     if (tangent.lengthSq() > 0) {
       const dir = this.reversed ? tangent.negate() : tangent
@@ -81,8 +95,16 @@ export class DataPacket {
 
     if (raw >= 1) {
       this.arrived = true
+
+      // Swap to the original shape now that the packet has exited the tube
+      this.mesh.geometry = this.arrivalGeo
+      // Sit upright at the destination (path tangent orientation no longer makes sense)
+      this.mesh.quaternion.identity()
+      // Slightly lower glow intensity at rest so the shape reads clearly
+      const mat = this.mesh.material as THREE.MeshStandardMaterial
+      mat.emissiveIntensity = 1.5
+
       if (this.arrivalColor !== null) {
-        const mat    = this.mesh.material as THREE.MeshStandardMaterial
         const target = new THREE.Color(this.arrivalColor)
         new TWEEN.Tween({ r: mat.color.r, g: mat.color.g, b: mat.color.b })
           .to({ r: target.r, g: target.g, b: target.b }, 400)
@@ -99,7 +121,8 @@ export class DataPacket {
 
   dispose(scene: THREE.Scene): void {
     scene.remove(this.mesh)
-    this.mesh.geometry.dispose()
+    this.travelGeo.dispose()
+    this.arrivalGeo.dispose()
     ;(this.mesh.material as THREE.Material).dispose()
   }
 }
