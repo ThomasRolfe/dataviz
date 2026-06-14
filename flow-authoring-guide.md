@@ -402,6 +402,22 @@ dashed leader line. Multiple annotations fan out automatically to avoid overlap.
 | `callout`   | An event, trigger, or action occurring at the component. User interactions, inbound requests, system events. | White text, blue left border |
 | `transform` | Code-level processing inside the component: validation, enrichment, encryption, format conversion. | Monospace font, cyan left border |
 
+**`style` (optional):**
+
+Overrides the card's accent colour and adds an icon badge to signal the outcome
+of the action being annotated.
+
+| `style`     | Colour | Icon | When to use |
+|-------------|--------|------|-------------|
+| `"info"`    | Blue   | ℹ    | Default; neutral context or informational state |
+| `"success"` | Green  | ✓    | Action completed successfully |
+| `"warning"` | Amber  | ⚠    | Partial success, rate-limited, degraded state |
+| `"error"`   | Red    | ✕    | Failure, rejection, exception thrown |
+
+Omit `style` for neutral annotations (the card uses the type's default colour).
+Pair `style` with `arrivalStyle` on the accompanying packet when you want both
+the annotation card and the packet arrival to communicate the same outcome.
+
 **Annotation text guidelines:**
 - For `callout`: write as the actual code or event that fires, not a prose
   description. `"user.signIn({ provider: 'google' })"` not `"User signs in"`.
@@ -439,6 +455,7 @@ after arrival until the next step. The user can hover it to inspect the payload.
 {
   "connection":   "c1",
   "shape":        "document",
+  "direction":    "forward",
   "arrivalStyle": "success",
   "data": {
     "event":     "button_click",
@@ -449,6 +466,21 @@ after arrival until the next step. The user can hover it to inspect the payload.
 ```
 
 Use `null` (or omit the field) for steps with no data-in-flight.
+
+**`direction` (optional, default `"forward"`):**
+
+Controls which end of the pipe the packet departs from.
+
+| `direction`  | Packet travels |
+|--------------|----------------|
+| `"forward"`  | `from` → `to` (default) |
+| `"reverse"`  | `to` → `from` |
+
+`direction: "reverse"` lets a response travel back along the same connection,
+so you do not need a separate return connection. Use it when the request and
+response logically share the same pipe (e.g. a client calls a server and the
+server responds). For architecturally distinct directions — different protocols,
+different endpoints — define a separate connection with `from`/`to` swapped.
 
 **Packet shape vocabulary:**
 
@@ -477,6 +509,28 @@ context-independent.
 **`data` field:** include the actual representative payload structure. Keys and
 values are shown verbatim in the hover tooltip. Use realistic values, not
 placeholders like `"<user_id>"`. Real data makes the diagram more instructive.
+
+### 8.10 `packets` — multiple simultaneous packets
+
+Use `packets` (plural) when several data flows happen in the same step — for
+example a fan-out from one source to three consumers, or a two-sided handshake.
+Each item uses the same schema as `packet`.
+
+```json
+"packets": [
+  { "connection": "c_fanout_a", "shape": "sphere", "arrivalStyle": "success" },
+  { "connection": "c_fanout_b", "shape": "sphere" },
+  { "connection": "c_fanout_c", "shape": "sphere", "arrivalStyle": "warning" }
+]
+```
+
+- `packets` and `packet` are mutually exclusive per step — use one or the other,
+  not both.
+- All packets in the array launch simultaneously and travel in parallel.
+- Each packet may have its own `connection`, `shape`, `direction`, `arrivalStyle`,
+  and `data`.
+- The `active_connections` array for the step should include every connection
+  referenced across the entire `packets` array.
 
 ---
 
@@ -547,7 +601,8 @@ Step N: Final state (highlight destination, camera zoom)
 Step 0: Overview
 Step 1: Client sends request (highlight client + server, packet: document, arrivalStyle: success)
 Step 2: Server processes (highlight server, transform annotation)
-Step 3: Server responds (highlight server + client, packet: envelope, reverse connection)
+Step 3: Server responds (highlight server + client, packet: envelope, direction: "reverse" on the
+        same connection — or a separate return connection if the directions are architecturally distinct)
 Step 4: Client handles response (highlight client, callout annotation)
 ```
 
@@ -599,9 +654,15 @@ Step N+3: Retry or fallback (packet with arrivalStyle: warning)
 7. **Too many steps.** Aim for 6–12 steps per flow. More than 14 is hard to
    follow. If the flow has more meaningful events, split it into multiple flows.
 
-8. **Reusing connection ids for return paths.** A connection has a fixed `from`
-   and `to`. For a response traveling the reverse direction, define a separate
-   connection with `from` and `to` swapped.
+8. **Return-path design.** Two valid approaches for packets that travel back to
+   the caller:
+   - **`direction: "reverse"` on the packet** — packet uses the same connection
+     but travels `to` → `from`. Best when the call and response are two sides of
+     the same logical exchange (e.g. REST request + response).
+   - **Separate connection** with `from`/`to` swapped — best when the two
+     directions are architecturally distinct (different protocols, different
+     endpoints, different semantics).
+   Do not omit the return step entirely — viewers will miss the acknowledgement.
 
 9. **`logo` without `color`.** Logo components render using the type's default
    colour, which may not match the brand. Always pair `logo` with the brand's hex
@@ -787,7 +848,10 @@ Before returning a flow JSON, verify each of these:
 | Step highlight / dim transitions | ✅ Rendered |
 | Packet animation + hover tooltip | ✅ Rendered |
 | Packet `arrivalStyle` colour flash | ✅ Rendered |
+| Packet `direction: reverse` (return path on same pipe) | ✅ Rendered |
+| Multiple simultaneous packets (`packets[]`) | ✅ Rendered |
 | Annotation cards with leader lines | ✅ Rendered (`callout`, `transform`) |
+| Annotation `style` badge + icon (`info`, `success`, `warning`, `error`) | ✅ Rendered |
 | Camera pan + zoom per step | ✅ Rendered |
 | Scroll-wheel zoom | ✅ Interactive |
 | Component hover tooltip | ✅ Interactive |
