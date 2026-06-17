@@ -54,10 +54,10 @@ function buildIconBoxMeshes(
   const svgSize   = tempBox.getSize(new THREE.Vector3())
   const svgCenter = tempBox.getCenter(new THREE.Vector3())
 
-  // Scale icon to fill 72% of the box footprint
+  // Scale icon to fill 78% of the box footprint
   const uniformScale = Math.min(
-    meshSize.x * 0.72 / svgSize.x,
-    meshSize.z * 0.72 / svgSize.y,
+    meshSize.x * 0.78 / svgSize.x,
+    meshSize.z * 0.78 / svgSize.y,
   )
 
   // Center → flipY → rotateX(-PI/2): SVG lies flat on the XZ plane, face up
@@ -69,15 +69,17 @@ function buildIconBoxMeshes(
   // Group origin is at world y = center.y + meshSize.y/2.
   // Box base at ground (world y=0) → local y offset = -meshSize.y/2 + BOX_H/2
   const boxY  = -meshSize.y / 2 + BOX_H / 2
-  // Icon face sits just above box top
-  const iconY = -meshSize.y / 2 + BOX_H + 0.004
+  // Icon face lifted well clear of the box top to prevent z-fighting at 45° angle
+  const iconY = -meshSize.y / 2 + BOX_H + 0.06
 
   const box   = buildBox(meshSize, boxMat, boxY)
   const icons = allShapes.map(shape => {
-    const geo = new THREE.ShapeGeometry(shape)
+    const geo  = new THREE.ShapeGeometry(shape)
     geo.applyMatrix4(transform)
     geo.translate(0, iconY, 0)
-    return new THREE.Mesh(geo, iconMat)
+    const mesh = new THREE.Mesh(geo, iconMat)
+    mesh.renderOrder = 1  // draw after the box so depth never hides it
+    return mesh
   })
 
   return [box, ...icons]

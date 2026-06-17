@@ -68,6 +68,7 @@ export class ComponentMesh {
       color:       0xffffff,
       transparent: true,
       opacity:     STATE_OPACITY['idle'],
+      depthWrite:  false,  // never let the icon face clobber depth — box already owns it
     })
 
     const visualMeshes = component.logo
