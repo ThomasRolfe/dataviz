@@ -1,0 +1,33 @@
+.tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  max-width: 240px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  z-index: 195;
+}
+
+.tooltip strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-strong);
+  margin-bottom: 0.25rem;
+}
+
+.tooltip p {
+  color: var(--text-secondary);
+  margin-bottom: 0.2rem;
+}
+
+.notes {
+  color: var(--text-muted);
+  font-style: italic;
+}

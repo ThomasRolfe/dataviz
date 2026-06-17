@@ -47,7 +47,10 @@ export class HoverSystem {
     const hit = packetHit
       ? packetHit.object
       : intersects.length > 0 ? intersects[0].object : null
-    const hoveredId = (hit?.userData?.componentId as string | undefined) ?? null
+    const hoveredId: string | null =
+      (hit?.userData?.componentId as string | undefined)
+      ?? (hit?.userData?.zoneId ? `__zone__${hit.userData.zoneId as string}` : undefined)
+      ?? null
 
     if (hoveredId !== this.lastHoveredId) {
       this.lastHoveredId = hoveredId

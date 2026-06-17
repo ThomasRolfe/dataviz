@@ -14,11 +14,17 @@ export interface Zone {
   id: string
   label: string
   color: string
+  parentId?: string
+  outline?: 'solid' | 'dashed'
   bounds: {
     col: number
     row: number
     width: number
     height: number
+  }
+  meta?: {
+    description?: string
+    notes?: string
   }
 }
 

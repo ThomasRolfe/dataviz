@@ -1,3 +1,7 @@
+export interface ZoneLabelMeshUserData {
+  readonly zoneId: string
+}
+
 export interface ComponentMeshUserData {
   readonly componentId: string
 }

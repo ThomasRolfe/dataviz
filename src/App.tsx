@@ -4,6 +4,7 @@ import { StepControls } from '@/components/StepControls'
 import { StepHUD } from '@/components/StepHUD'
 import { AnnotationOverlay } from '@/components/AnnotationOverlay'
 import { HoverTooltip } from '@/components/HoverTooltip'
+import { ZoneTooltip } from '@/components/ZoneTooltip'
 import { PipeLabels } from '@/components/PipeLabels'
 import { PacketTooltip } from '@/components/PacketTooltip'
 import { StepSidebar } from '@/components/StepSidebar'
@@ -170,8 +171,16 @@ function App() {
           hoveredId={hoveredId}
         />
       )}
-      {hoveredId && !hoveredId.startsWith('__packet__') && bridge && (
+      {hoveredId && !hoveredId.startsWith('__packet__') && !hoveredId.startsWith('__zone__') && bridge && (
         <HoverTooltip hoveredId={hoveredId} graph={graph} bridge={bridge} />
+      )}
+      {hoveredId?.startsWith('__zone__') && sceneRef.current && bridge && (
+        <ZoneTooltip
+          zoneId={hoveredId.slice('__zone__'.length)}
+          graph={graph}
+          scene={sceneRef.current}
+          bridge={bridge}
+        />
       )}
 
       {engine && stepState && (

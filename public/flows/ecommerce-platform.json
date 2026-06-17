@@ -9,25 +9,47 @@
       "id": "z_clients",
       "label": "Clients",
       "color": "#2d6a9f",
-      "bounds": { "col": 0, "row": 1, "width": 3, "height": 8 }
+      "bounds": { "col": 0, "row": 1, "width": 3, "height": 8 },
+      "meta": { "description": "Browser and mobile clients. Traffic enters the system here via HTTPS." }
+    },
+    {
+      "id": "z_aws",
+      "label": "AWS Cloud",
+      "color": "#d45b00",
+      "outline": "dashed",
+      "bounds": { "col": 3, "row": 0, "width": 17, "height": 10 },
+      "meta": {
+        "description": "AWS us-east-1 region. All services run inside a VPC with private subnets.",
+        "notes": "Auto-scaling enabled. CloudWatch alarms configured for p99 latency > 500ms."
+      }
     },
     {
       "id": "z_api",
       "label": "API Layer",
       "color": "#2d9f6a",
-      "bounds": { "col": 4, "row": 2, "width": 3, "height": 6 }
+      "parentId": "z_aws",
+      "bounds": { "col": 4, "row": 2, "width": 3, "height": 6 },
+      "meta": { "description": "API Gateway handles rate-limiting, JWT verification, and routing to downstream services." }
     },
     {
       "id": "z_services",
       "label": "Core Services",
       "color": "#7a3d9f",
-      "bounds": { "col": 8, "row": 0, "width": 8, "height": 10 }
+      "parentId": "z_aws",
+      "bounds": { "col": 8, "row": 0, "width": 8, "height": 10 },
+      "meta": { "description": "ECS Fargate cluster. Each service runs as an independent container with its own task definition." }
     },
     {
       "id": "z_external",
       "label": "External APIs",
       "color": "#9f3d3d",
-      "bounds": { "col": 17, "row": 1, "width": 3, "height": 8 }
+      "parentId": "z_aws",
+      "outline": "dashed",
+      "bounds": { "col": 17, "row": 1, "width": 3, "height": 8 },
+      "meta": {
+        "description": "Third-party SaaS integrations called over the public internet.",
+        "notes": "Failures here are non-fatal — order processing continues and retries are scheduled."
+      }
     }
   ],
   "components": [

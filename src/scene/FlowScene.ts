@@ -41,6 +41,7 @@ export class FlowScene extends SceneManager {
   private arrivedPackets:  Set<DataPacket> = new Set()
   private penetratedIds:   Set<string> = new Set()
   private hoverSystem:     HoverSystem
+  zoneLabelPositions:      Map<string, THREE.Vector3> = new Map()
   private overviewTarget:  THREE.Vector3
   private overviewFrustum: number
   private isPanning:       boolean = false
@@ -76,10 +77,17 @@ export class FlowScene extends SceneManager {
     // Overlay bridge
     this.overlayBridge = new OverlayBridge(this.camera, this.renderer)
 
-    // Hover system — components register directly via addTarget
+    // Hover system — components and zone labels register as targets
     this.hoverSystem = new HoverSystem(canvas, this.camera, () => {})
     for (const cm of this.components.values()) {
       this.hoverSystem.addTarget(cm.hitMesh)
+    }
+    for (const z of this.zones) {
+      this.hoverSystem.addTarget(z.labelMesh)
+      this.zoneLabelPositions.set(
+        z.labelMesh.userData.zoneId as string,
+        z.labelMesh.position.clone(),
+      )
     }
 
     // Compute overview camera

@@ -179,6 +179,14 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
   }
 
   // Build InternalZone array
+  const zoneDefById = new Map(def.zones.map(z => [z.id, z]))
+  function zoneDepth(id: string, visited = new Set<string>()): number {
+    if (visited.has(id)) return 0
+    visited.add(id)
+    const parent = zoneDefById.get(id)?.parentId
+    return parent ? 1 + zoneDepth(parent, visited) : 0
+  }
+
   const zones: InternalZone[] = def.zones.map(z => {
     const min = new THREE.Vector3(
       z.bounds.col * CELL_SIZE,
@@ -191,11 +199,15 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
       (z.bounds.row + z.bounds.height) * CELL_SIZE
     )
     return {
-      id:    z.id,
-      label: z.label,
-      color: new THREE.Color(z.color),
+      id:       z.id,
+      label:    z.label,
+      color:    new THREE.Color(z.color),
       min,
       max,
+      parentId: z.parentId,
+      outline:  z.outline ?? 'solid',
+      depth:    zoneDepth(z.id),
+      meta:     z.meta,
     }
   })
 

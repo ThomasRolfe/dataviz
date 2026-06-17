@@ -26,15 +26,21 @@ function enumStr<T extends string>(valid: readonly T[], label: string): z.ZodTyp
 // ── Sub-schemas ───────────────────────────────────────────────────────────────
 
 const ZoneSchema = z.object({
-  id:     z.string(),
-  label:  z.string(),
-  color:  z.string(),
+  id:       z.string(),
+  label:    z.string(),
+  color:    z.string(),
+  parentId: z.string().optional(),
+  outline:  z.enum(['solid', 'dashed']).optional(),
   bounds: z.object({
     col:    z.number(),
     row:    z.number(),
     width:  z.number(),
     height: z.number(),
   }),
+  meta: z.object({
+    description: z.string().optional(),
+    notes:       z.string().optional(),
+  }).optional(),
 })
 
 const ComponentSchema = z.object({

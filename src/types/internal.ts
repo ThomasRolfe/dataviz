@@ -35,6 +35,10 @@ export interface InternalZone {
   color: THREE.Color
   min: THREE.Vector3
   max: THREE.Vector3
+  parentId?: string
+  outline: 'solid' | 'dashed'
+  depth: number
+  meta?: { description?: string; notes?: string }
 }
 
 export interface InternalGraph {
