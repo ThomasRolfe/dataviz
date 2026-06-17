@@ -161,27 +161,22 @@ export const COMPONENT_SHAPE_BUILDERS: Record<ComponentShape, ShapeBuilder> = {
   wall:       buildWall,
 }
 
+const TYPE_ICON: Record<ComponentType, string> = {
+  client:   'laptop',
+  service:  'server',
+  function: 'bolt',
+  database: 'database',
+  queue:    'layerGroup',
+  external: 'globe',
+}
+
 function buildTypeMesh(
-  type: ComponentType,
-  size: THREE.Vector3,
-  mat: THREE.MeshStandardMaterial,
+  type:    ComponentType,
+  size:    THREE.Vector3,
+  mat:     THREE.MeshStandardMaterial,
+  iconMat: THREE.MeshBasicMaterial,
 ): THREE.Mesh[] {
-  const { x: w, y: h, z: d } = size
-  let geo: THREE.BufferGeometry
-  switch (type) {
-    case 'database':
-      geo = new THREE.CylinderGeometry(w / 2, w / 2, h, 24)
-      break
-    case 'queue':
-      geo = new THREE.BoxGeometry(w, h * 0.5, d)
-      break
-    case 'function':
-      geo = new THREE.OctahedronGeometry(Math.min(w, d) * 0.45)
-      break
-    default:
-      geo = new THREE.BoxGeometry(w, h, d)
-  }
-  return [new THREE.Mesh(geo, mat)]
+  return buildSolidIconMeshes(TYPE_ICON[type] ?? 'cube', size, mat, iconMat)
 }
 
 export function buildShapeMeshes(
@@ -195,5 +190,5 @@ export function buildShapeMeshes(
     const builder = COMPONENT_SHAPE_BUILDERS[shape]
     if (builder) return builder(size, mat, iconMat)
   }
-  return buildTypeMesh(type, size, mat)
+  return buildTypeMesh(type, size, mat, iconMat)
 }
