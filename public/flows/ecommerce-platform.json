@@ -35,7 +35,7 @@
       "id": "mobile",
       "label": "Mobile App",
       "type": "client",
-      "shape": "smartphone",
+      "logo": "apple",
       "position": { "col": 1, "row": 2 },
       "meta": { "description": "iOS and Android checkout client" }
     },
@@ -43,7 +43,7 @@
       "id": "browser",
       "label": "Web Browser",
       "type": "client",
-      "shape": "desktop",
+      "logo": "react",
       "position": { "col": 1, "row": 6 },
       "meta": { "description": "React SPA served via CDN" }
     },
@@ -99,7 +99,7 @@
       "id": "order_db",
       "label": "Orders DB",
       "type": "database",
-      "shape": "stack",
+      "logo": "postgresql",
       "color": "#b07520",
       "position": { "col": 12, "row": 4 },
       "meta": { "description": "PostgreSQL — order records, line items" }
