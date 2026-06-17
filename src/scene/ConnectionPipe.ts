@@ -5,7 +5,7 @@ import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
 
 const TUBE_SEGMENTS    = 64
-const TUBE_RADIUS      = 0.35  // wide enough to contain the packet sphere
+const TUBE_RADIUS      = 0.22
 const TUBE_RADIUS_SEGS = 12
 
 const OPACITY_IDLE       = 0.12  // nearly invisible glass at rest

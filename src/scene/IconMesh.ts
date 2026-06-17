@@ -39,8 +39,10 @@ function buildIconBoxMeshes(
   boxMat:  THREE.MeshStandardMaterial,
   iconMat: THREE.MeshBasicMaterial,
 ): THREE.Mesh[] {
-  const boxY = -meshSize.y / 2 + BOX_H / 2
-  const box  = buildBox(meshSize, boxMat, boxY)
+  // Use the full component height so tubes appear to enter the box naturally.
+  // Group origin is at center.y + meshSize.y/2, so local y=0 puts the box
+  // center at that point; bottom lands at world y=0 (ground), top at meshSize.y.
+  const box  = buildBox(meshSize, boxMat, 0, meshSize.y)
   if (svgPaths.length === 0) return [box]
 
   // Draw FA paths onto a 2-D canvas using the browser Path2D API.
@@ -77,7 +79,7 @@ function buildIconBoxMeshes(
   iconMat.needsUpdate        = true
 
   // PlaneGeometry lying flat on top of the box, face up
-  const planeY = -meshSize.y / 2 + BOX_H + 0.01
+  const planeY = meshSize.y / 2 + 0.01
   const face   = new THREE.Mesh(
     new THREE.PlaneGeometry(meshSize.x * 0.88, meshSize.z * 0.88),
     iconMat,
@@ -90,11 +92,12 @@ function buildIconBoxMeshes(
 }
 
 function buildBox(
-  meshSize: THREE.Vector3,
-  mat: THREE.MeshStandardMaterial,
-  localY = 0,
+  meshSize:  THREE.Vector3,
+  mat:       THREE.MeshStandardMaterial,
+  localY  = 0,
+  boxHeight = BOX_H,
 ): THREE.Mesh {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(meshSize.x, BOX_H, meshSize.z), mat)
+  const m = new THREE.Mesh(new THREE.BoxGeometry(meshSize.x, boxHeight, meshSize.z), mat)
   m.position.y = localY
   return m
 }
@@ -110,7 +113,7 @@ export function buildBrandIconMeshes(
   const resolved = resolveIcon(logoName, brandIcons as Record<string, unknown>)
   if (!resolved) {
     console.warn(`[IconMesh] Unknown brand icon: "${logoName}"`)
-    return [buildBox(meshSize, boxMat, -meshSize.y / 2 + BOX_H / 2)]
+    return [buildBox(meshSize, boxMat, 0, meshSize.y)]
   }
   return buildIconBoxMeshes(resolved.paths, resolved.width, resolved.height, meshSize, boxMat, iconMat)
 }
@@ -124,7 +127,7 @@ export function buildSolidIconMeshes(
   const resolved = resolveIcon(iconName, solidIcons as Record<string, unknown>)
   if (!resolved) {
     console.warn(`[IconMesh] Unknown solid icon: "${iconName}"`)
-    return [buildBox(meshSize, boxMat, -meshSize.y / 2 + BOX_H / 2)]
+    return [buildBox(meshSize, boxMat, 0, meshSize.y)]
   }
   return buildIconBoxMeshes(resolved.paths, resolved.width, resolved.height, meshSize, boxMat, iconMat)
 }

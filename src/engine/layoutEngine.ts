@@ -9,8 +9,8 @@ export const COMPONENT_HEIGHT: Record<ComponentType, number> = {
   client:   0.8,
   service:  1.2,
   database: 1.6,
-  queue:    0.6,
-  function: 0.5,
+  queue:    0.80,
+  function: 0.80,
   external: 1.0,
 }
 
