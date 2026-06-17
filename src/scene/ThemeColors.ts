@@ -22,7 +22,7 @@ export const THEME_COLORS: Record<Theme, ThemeConfig> = {
     pipeIdle:           0x7799bb,  // light blue-grey glass at rest
     pipeActive:         0x66bbff,  // bright blue when a step lights the connection
     pipeActiveEmissive: 0x1a3a5c,
-    packetColor:        0x00ffcc,
+    packetColor:        0xff8c00,
     ambientColor:       0xffeedd,
     ambientIntensity:   0.9,
     fillColor:          0xaaccff,
@@ -35,7 +35,7 @@ export const THEME_COLORS: Record<Theme, ThemeConfig> = {
     pipeIdle:           0x99bbcc,  // pale blue-grey glass at rest
     pipeActive:         0x3388cc,  // medium blue when lit
     pipeActiveEmissive: 0x112233,  // subtle inner glow (was none)
-    packetColor:        0x009966,
+    packetColor:        0xff5500,
     ambientColor:       0xffffff,
     ambientIntensity:   1.8,
     fillColor:          0xaaccff,
