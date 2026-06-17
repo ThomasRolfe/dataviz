@@ -35,7 +35,7 @@
       "id": "mobile",
       "label": "Mobile App",
       "type": "client",
-      "logo": "apple",
+      "icon": "mobileScreen",
       "position": { "col": 1, "row": 2 },
       "meta": { "description": "iOS and Android checkout client" }
     },

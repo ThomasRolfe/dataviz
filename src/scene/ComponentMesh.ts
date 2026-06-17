@@ -4,6 +4,7 @@ import type { InternalComponent } from '@/types/internal'
 import type { ComponentType } from '@/types/schema'
 import { buildShapeMeshes } from '@/scene/shapeRegistry'
 import { buildLogoMeshes } from '@/scene/LogoMesh'
+import { buildSolidIconMeshes } from '@/scene/IconMesh'
 import type { ComponentMeshUserData } from '@/scene/meshUserData'
 
 export type MeshState = 'idle' | 'highlighted' | 'dimmed'
@@ -31,14 +32,6 @@ export const STATE_OPACITY: Record<MeshState, number> = {
 
 const PENETRATED_OPACITY = 0.30
 
-// WCAG relative luminance — pick whichever of white/black has higher contrast with the box colour.
-function contrastingIconColor(boxColor: THREE.Color): number {
-  const lin = (c: number) =>
-    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-  const L = 0.2126 * lin(boxColor.r) + 0.7152 * lin(boxColor.g) + 0.0722 * lin(boxColor.b)
-  // crossover point L ≈ 0.179 — below it white wins, above it black wins
-  return L < 0.179 ? 0xffffff : 0x111111
-}
 
 export class ComponentMesh {
   group:     THREE.Group
@@ -71,16 +64,17 @@ export class ComponentMesh {
       opacity:     STATE_OPACITY['idle'],
     })
 
-    // Icon face — white or near-black depending on which has higher WCAG contrast with the box
     this.iconMat = new THREE.MeshBasicMaterial({
-      color:       contrastingIconColor(this.mat.color),
+      color:       0xffffff,
       transparent: true,
       opacity:     STATE_OPACITY['idle'],
     })
 
     const visualMeshes = component.logo
       ? buildLogoMeshes(component.logo, component.meshSize, this.mat, this.iconMat)
-      : buildShapeMeshes(component.type, component.shape, component.meshSize, this.mat, this.iconMat)
+      : component.icon
+        ? buildSolidIconMeshes(component.icon, component.meshSize, this.mat, this.iconMat)
+        : buildShapeMeshes(component.type, component.shape, component.meshSize, this.mat, this.iconMat)
     for (const m of visualMeshes) {
       m.castShadow    = true
       m.receiveShadow = true

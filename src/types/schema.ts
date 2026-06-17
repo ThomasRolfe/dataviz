@@ -46,6 +46,7 @@ export interface Component {
   type: ComponentType
   shape?: ComponentShape
   logo?: string
+  icon?: string
   color?: string
   position: { col: number; row: number; elevation?: number }
   size?: { w: number; h: number }

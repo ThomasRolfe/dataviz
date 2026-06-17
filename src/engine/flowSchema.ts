@@ -43,6 +43,7 @@ const ComponentSchema = z.object({
   type:     enumStr(COMPONENT_TYPES,  'Invalid component type'),
   shape:    enumStr(COMPONENT_SHAPES, 'Invalid component shape').optional(),
   logo:     z.string().optional(),
+  icon:     z.string().optional(),
   color:    z.string().optional(),
   position: z.object({
     col:       z.number(),
