@@ -211,6 +211,31 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
     }
   })
 
+  // Auto-expand parent zones to enclose all their children with padding.
+  // Process deepest zones first so multi-level nesting propagates correctly.
+  const PARENT_PADDING = CELL_SIZE * 1.5  // 1.5 grid cells of space on every side
+  const childrenByParent = new Map<string, InternalZone[]>()
+  for (const z of zones) {
+    if (z.parentId) {
+      if (!childrenByParent.has(z.parentId)) childrenByParent.set(z.parentId, [])
+      childrenByParent.get(z.parentId)!.push(z)
+    }
+  }
+  const byDepthDesc = [...zones].sort((a, b) => b.depth - a.depth)
+  for (const z of byDepthDesc) {
+    const children = childrenByParent.get(z.id)
+    if (!children?.length) continue
+    let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity
+    for (const c of children) {
+      minX = Math.min(minX, c.min.x);  minZ = Math.min(minZ, c.min.z)
+      maxX = Math.max(maxX, c.max.x);  maxZ = Math.max(maxZ, c.max.z)
+    }
+    z.min.x = Math.min(z.min.x, minX - PARENT_PADDING)
+    z.min.z = Math.min(z.min.z, minZ - PARENT_PADDING)
+    z.max.x = Math.max(z.max.x, maxX + PARENT_PADDING)
+    z.max.z = Math.max(z.max.z, maxZ + PARENT_PADDING)
+  }
+
   // Compute gridBounds
   const cols = def.layout.grid.cols
   const rows = def.layout.grid.rows
