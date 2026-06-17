@@ -1,12 +1,9 @@
 import * as THREE from 'three'
-import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js'
 import * as brandIcons from '@fortawesome/free-brands-svg-icons'
 import * as solidIcons from '@fortawesome/free-solid-svg-icons'
 
 type FAIconTuple = [number, number, string[], string, string | string[]]
 type FAIconEntry = { icon: FAIconTuple }
-
-const svgLoader = new SVGLoader()
 
 const BOX_H = 0.30  // fixed height for all icon-box components
 
@@ -25,9 +22,15 @@ function resolveIcon(
 /**
  * Build a thin coloured box with a flat white icon face on top.
  *
+ * Uses a canvas texture on a PlaneGeometry rather than floating ShapeGeometry,
+ * which eliminates z-fighting entirely (the orthographic camera near=0.1/far=1000
+ * gives too few depth levels for a sub-unit gap in swiftshader).
+ *
  * boxMat  — component colour material (used for the box body)
- * iconMat — white icon material (used for the SVG face on top)
+ * iconMat — white icon material (receives the canvas texture map)
  */
+const TEX_SIZE = 256
+
 function buildIconBoxMeshes(
   svgPaths: string[],
   vbW:     number,
@@ -36,53 +39,54 @@ function buildIconBoxMeshes(
   boxMat:  THREE.MeshStandardMaterial,
   iconMat: THREE.MeshBasicMaterial,
 ): THREE.Mesh[] {
-  const svgStr   = `<svg viewBox="0 0 ${vbW} ${vbH}">${svgPaths.map(d => `<path d="${d}"/>`).join('')}</svg>`
-  const { paths } = svgLoader.parse(svgStr)
+  const boxY = -meshSize.y / 2 + BOX_H / 2
+  const box  = buildBox(meshSize, boxMat, boxY)
+  if (svgPaths.length === 0) return [box]
 
-  const allShapes: THREE.Shape[] = []
-  for (const path of paths) allShapes.push(...SVGLoader.createShapes(path))
-  if (allShapes.length === 0) return [buildBox(meshSize, boxMat)]
+  // Draw FA paths onto a 2-D canvas using the browser Path2D API.
+  // The canvas context handles the evenodd fill rule correctly, avoiding
+  // the winding / hole misinterpretation that THREE.SVGLoader can produce.
+  const canvas = document.createElement('canvas')
+  canvas.width  = TEX_SIZE
+  canvas.height = TEX_SIZE
+  const ctx = canvas.getContext('2d')!
 
-  // Measure SVG bounding box
-  const tempBox = new THREE.Box3()
-  for (const shape of allShapes) {
-    const g = new THREE.ShapeGeometry(shape)
-    g.computeBoundingBox()
-    if (g.boundingBox) tempBox.union(g.boundingBox)
-    g.dispose()
-  }
-  const svgSize   = tempBox.getSize(new THREE.Vector3())
-  const svgCenter = tempBox.getCenter(new THREE.Vector3())
+  ctx.fillStyle = `#${iconMat.color.getHexString()}`
 
-  // Scale icon to fill 78% of the box footprint
-  const uniformScale = Math.min(
-    meshSize.x * 0.78 / svgSize.x,
-    meshSize.z * 0.78 / svgSize.y,
+  const fill = 0.78
+  const s    = Math.min(TEX_SIZE * fill / vbW, TEX_SIZE * fill / vbH)
+  const ox   = (TEX_SIZE - vbW * s) / 2
+  const oy   = (TEX_SIZE - vbH * s) / 2
+
+  ctx.save()
+  ctx.translate(ox, oy)
+  ctx.scale(s, s)
+  for (const d of svgPaths) ctx.fill(new Path2D(d), 'evenodd')
+  ctx.restore()
+
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+
+  // Apply texture to the shared iconMat (each ComponentMesh has its own instance).
+  // polygonOffset pushes the face forward in the depth buffer, defeating any
+  // residual z-fighting even when both box and icon are in the transparent pass.
+  iconMat.map                = tex
+  iconMat.polygonOffset      = true
+  iconMat.polygonOffsetFactor = -2
+  iconMat.polygonOffsetUnits  = -2
+  iconMat.needsUpdate        = true
+
+  // PlaneGeometry lying flat on top of the box, face up
+  const planeY = -meshSize.y / 2 + BOX_H + 0.01
+  const face   = new THREE.Mesh(
+    new THREE.PlaneGeometry(meshSize.x * 0.88, meshSize.z * 0.88),
+    iconMat,
   )
+  face.rotation.x  = -Math.PI / 2
+  face.position.y  = planeY
+  face.renderOrder = 1
 
-  // Center → flipY → rotateX(-PI/2): SVG lies flat on the XZ plane, face up
-  const transform = new THREE.Matrix4()
-    .premultiply(new THREE.Matrix4().makeTranslation(-svgCenter.x, -svgCenter.y, 0))
-    .premultiply(new THREE.Matrix4().makeScale(uniformScale, -uniformScale, uniformScale))
-    .premultiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2))
-
-  // Group origin is at world y = center.y + meshSize.y/2.
-  // Box base at ground (world y=0) → local y offset = -meshSize.y/2 + BOX_H/2
-  const boxY  = -meshSize.y / 2 + BOX_H / 2
-  // Icon face lifted well clear of the box top to prevent z-fighting at 45° angle
-  const iconY = -meshSize.y / 2 + BOX_H + 0.06
-
-  const box   = buildBox(meshSize, boxMat, boxY)
-  const icons = allShapes.map(shape => {
-    const geo  = new THREE.ShapeGeometry(shape)
-    geo.applyMatrix4(transform)
-    geo.translate(0, iconY, 0)
-    const mesh = new THREE.Mesh(geo, iconMat)
-    mesh.renderOrder = 1  // draw after the box so depth never hides it
-    return mesh
-  })
-
-  return [box, ...icons]
+  return [box, face]
 }
 
 function buildBox(
