@@ -39,10 +39,11 @@ export class ComponentMesh {
   topCenter: THREE.Vector3
   id:        string
 
-  private mat:          THREE.MeshStandardMaterial
-  private iconMat:      THREE.MeshBasicMaterial
-  private currentState: MeshState = 'idle'
-  private penetrated:   boolean   = false
+  private mat:              THREE.MeshStandardMaterial
+  private iconMat:          THREE.MeshBasicMaterial
+  private currentState:     MeshState = 'idle'
+  private penetrated:       boolean   = false
+  private penetrationTween: TWEEN.Tween<{ opacity: number }> | null = null
 
   constructor(scene: THREE.Scene, component: InternalComponent) {
     this.id        = component.id
@@ -123,15 +124,19 @@ export class ComponentMesh {
   setPenetrated(penetrated: boolean): void {
     if (this.penetrated === penetrated) return
     this.penetrated = penetrated
-    if (penetrated) {
-      this.mat.opacity     = PENETRATED_OPACITY
-      this.mat.transparent = true
-      this.iconMat.opacity = PENETRATED_OPACITY
-    } else {
-      this.mat.opacity     = STATE_OPACITY[this.currentState]
-      this.mat.transparent = this.mat.opacity < 1.0
-      this.iconMat.opacity = STATE_OPACITY[this.currentState]
-    }
+
+    const targetOpacity = penetrated ? PENETRATED_OPACITY : STATE_OPACITY[this.currentState]
+    this.penetrationTween?.stop()
+    this.penetrationTween = new TWEEN.Tween({ opacity: this.mat.opacity })
+      .to({ opacity: targetOpacity }, 300)
+      .easing(TWEEN.Easing.Quadratic.InOut)
+      .onUpdate(({ opacity }) => {
+        this.mat.opacity     = opacity
+        this.mat.transparent = opacity < 1.0
+        this.iconMat.opacity = opacity
+      })
+      .onComplete(() => { this.penetrationTween = null })
+      .start()
   }
 
   dispose(scene: THREE.Scene): void {
