@@ -186,7 +186,11 @@
         "inventory_svc", "payment_fn", "notif_fn", "order_db",
         "event_bus", "stripe_api", "aws_ses", "slack_ops"
       ],
-      "active_connections": [],
+      "active_connections": ["c_mob_gw", "c_web_gw"],
+      "streams": [
+        { "connection": "c_mob_gw", "color": "#4a9edd" },
+        { "connection": "c_web_gw", "color": "#4a9edd" }
+      ],
       "annotations": [
         {
           "type": "callout",
@@ -411,7 +415,14 @@
         "event_bus", "notif_fn", "aws_ses", "slack_ops"
       ],
       "active_connections": [
-        "c_mob_gw", "c_web_gw", "c_order_db", "c_notif_email", "c_notif_slack"
+        "c_mob_gw", "c_web_gw", "c_order_bus", "c_notif_email", "c_notif_slack"
+      ],
+      "streams": [
+        { "connection": "c_mob_gw",      "color": "#4a9edd" },
+        { "connection": "c_web_gw",      "color": "#4a9edd" },
+        { "connection": "c_order_bus",   "color": "#9b6dda" },
+        { "connection": "c_notif_email", "color": "#5dbe8a" },
+        { "connection": "c_notif_slack", "color": "#5dbe8a" }
       ],
       "annotations": [
         {
