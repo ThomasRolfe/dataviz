@@ -63,7 +63,7 @@ export class ChevronStream {
 
       // Project tangent onto horizontal plane and rotate around Y axis
       // so the chevron arrow points in the direction of travel (flat in XZ plane)
-      const angle = Math.atan2(tan.x, tan.z)
+      const angle = Math.atan2(-tan.z, tan.x)
 
       const mesh = this.meshes[i]
       mesh.position.copy(pos)
