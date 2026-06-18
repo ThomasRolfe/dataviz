@@ -3,7 +3,7 @@
     "title": "AWS AppSync Real-Time Serverless Web App",
     "description": "A movie voting app using AppSync, Lambda, Step Functions, and DynamoDB. CloudWatch Events kick off a scheduled workflow that rotates the current movie every 60 seconds. All connected clients receive real-time updates via GraphQL subscriptions over WebSocket."
   },
-  "layout": { "grid": { "cols": 20, "rows": 10 } },
+  "layout": { "grid": { "cols": 21, "rows": 10 } },
   "zones": [
     {
       "id": "z_clients",
@@ -40,7 +40,7 @@
       "id": "z_external",
       "label": "The Movie DB",
       "color": "#1b1b2e",
-      "bounds": { "col": 17, "row": 2, "width": 3, "height": 5 },
+      "bounds": { "col": 18, "row": 2, "width": 3, "height": 5 },
       "meta": { "description": "Third-party REST API (themoviedb.org). Lambda calls GET /movie/popular to fetch metadata for a random top-50 movie." }
     }
   ],
@@ -146,7 +146,7 @@
       "type": "external",
       "icon": "film",
       "color": "#1b1b2e",
-      "position": { "col": 18, "row": 3 },
+      "position": { "col": 19, "row": 3 },
       "meta": {
         "description": "Third-party REST API (api.themoviedb.org/3). Lambda calls GET /movie/popular, picks a random entry from the top-50 list, and retrieves full metadata.",
         "notes": "Bearer token auth. Rate limit: 40 req/10 s."
