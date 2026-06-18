@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 
 const COUNT     = 6
-const PERIOD_MS = 1800
+const PERIOD_MS = 3500
 
 // Chevron ">" band shape, pointing in +X direction in local XZ space.
 // Two arms of constant thickness meeting at a tip — no filled interior.
