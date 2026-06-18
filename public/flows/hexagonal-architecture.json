@@ -1,0 +1,499 @@
+{
+  "meta": {
+    "title": "Hexagonal Architecture — Add More Domains",
+    "description": "Three bounded contexts (Orders, Products, Notifications) each structured as a hexagon: primary adapters drive the core, secondary adapters are driven by it. Domains communicate exclusively through a shared Amazon EventBridge event bus."
+  },
+  "layout": { "grid": { "cols": 20, "rows": 11 } },
+  "zones": [
+    {
+      "id": "z_external",
+      "label": "External",
+      "color": "#546e7a",
+      "bounds": { "col": 0, "row": 2, "width": 2, "height": 6 },
+      "meta": { "description": "External clients (browser, mobile, service) making REST calls into domain APIs." }
+    },
+    {
+      "id": "z_orders",
+      "label": "Orders Domain",
+      "color": "#2d6a9f",
+      "bounds": { "col": 2, "row": 0, "width": 5, "height": 9 },
+      "meta": { "description": "Bounded context for order lifecycle. Driving ports: REST and events. Driven ports: DynamoDB and EventBridge." }
+    },
+    {
+      "id": "z_products",
+      "label": "Products Domain",
+      "color": "#2d9f6a",
+      "bounds": { "col": 8, "row": 0, "width": 5, "height": 9 },
+      "meta": { "description": "Bounded context for product catalogue and inventory. Reacts to OrderPlaced to reserve stock." }
+    },
+    {
+      "id": "z_notifications",
+      "label": "Notifications Domain",
+      "color": "#c47d00",
+      "bounds": { "col": 14, "row": 0, "width": 5, "height": 9 },
+      "meta": { "description": "Bounded context for customer and internal notifications. Reacts to OrderPlaced and StockDepleted." }
+    },
+    {
+      "id": "z_eventbus",
+      "label": "Amazon EventBridge",
+      "color": "#d45b00",
+      "outline": "dashed",
+      "bounds": { "col": 2, "row": 8, "width": 17, "height": 3 },
+      "meta": { "description": "Shared serverless event bus ('platform-events'). Rules route domain events to subscriber SQS queues. Archiving enabled." }
+    }
+  ],
+  "components": [
+    {
+      "id": "client",
+      "label": "REST Client",
+      "type": "client",
+      "shape": "desktop",
+      "position": { "col": 1, "row": 4 },
+      "meta": { "description": "Browser or upstream service making HTTP calls to the domain APIs." }
+    },
+
+    {
+      "id": "orders_apigw",
+      "label": "API Gateway",
+      "type": "service",
+      "icon": "networkWired",
+      "color": "#2d6a9f",
+      "position": { "col": 3, "row": 1 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Primary REST adapter for the Orders domain. Exposes POST /orders and GET /orders/{id}.",
+        "notes": "IAM auth. Throttle: 1 000 req/s."
+      }
+    },
+    {
+      "id": "orders_sqs",
+      "label": "SQS Queue",
+      "type": "queue",
+      "position": { "col": 3, "row": 3 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Primary event adapter. Receives events routed by EventBridge (e.g. ProductPriceUpdated) and triggers Orders Lambda.",
+        "notes": "Visibility timeout: 30 s. DLQ after 3 retries."
+      }
+    },
+    {
+      "id": "orders_lambda",
+      "label": "Orders Lambda",
+      "type": "function",
+      "color": "#7b3fa0",
+      "position": { "col": 3, "row": 5 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Core domain logic. Creates and validates orders, transitions state, orchestrates secondary adapter calls.",
+        "file": "src/orders/handler.py",
+        "notes": "Python 3.12. 512 MB. p99 < 80 ms."
+      }
+    },
+    {
+      "id": "orders_db",
+      "label": "DynamoDB",
+      "type": "database",
+      "color": "#1a5fb4",
+      "position": { "col": 3, "row": 7 },
+      "meta": {
+        "description": "Secondary storage adapter. Orders table — orderId (PK), customerId (GSI), status#createdAt (SK).",
+        "notes": "On-demand capacity. 90-day TTL."
+      }
+    },
+
+    {
+      "id": "products_apigw",
+      "label": "API Gateway",
+      "type": "service",
+      "icon": "networkWired",
+      "color": "#2d9f6a",
+      "position": { "col": 9, "row": 1 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Primary REST adapter. Exposes GET /products and PUT /products/{id}/stock.",
+        "notes": "Cognito auth. Response cache TTL: 300 s."
+      }
+    },
+    {
+      "id": "products_sqs",
+      "label": "SQS Queue",
+      "type": "queue",
+      "position": { "col": 9, "row": 3 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Primary event adapter. Receives OrderPlaced events from EventBridge to trigger stock reservation.",
+        "notes": "FIFO queue. Content-based deduplication."
+      }
+    },
+    {
+      "id": "products_lambda",
+      "label": "Products Lambda",
+      "type": "function",
+      "color": "#7b3fa0",
+      "position": { "col": 9, "row": 5 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Core domain logic. Manages catalogue and stock levels. Publishes ProductPriceUpdated and StockDepleted events.",
+        "file": "src/products/handler.py",
+        "notes": "Node 20. 256 MB."
+      }
+    },
+    {
+      "id": "products_db",
+      "label": "DynamoDB",
+      "type": "database",
+      "color": "#1a5fb4",
+      "position": { "col": 9, "row": 7 },
+      "meta": {
+        "description": "Secondary storage adapter. Products table — productId (PK), name, price, stockLevel.",
+        "notes": "Provisioned 100 RCU / 50 WCU. DAX cache enabled."
+      }
+    },
+
+    {
+      "id": "notif_apigw",
+      "label": "API Gateway",
+      "type": "service",
+      "icon": "networkWired",
+      "color": "#c47d00",
+      "position": { "col": 15, "row": 1 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Primary REST adapter. Exposes POST /notifications/preferences and GET /notifications/history.",
+        "notes": "Lambda authorizer."
+      }
+    },
+    {
+      "id": "notif_sqs",
+      "label": "SQS Queue",
+      "type": "queue",
+      "position": { "col": 15, "row": 3 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Primary event adapter. Receives OrderPlaced and StockDepleted events from EventBridge.",
+        "notes": "Standard queue. Batch size: 10."
+      }
+    },
+    {
+      "id": "notif_lambda",
+      "label": "Notifications Lambda",
+      "type": "function",
+      "color": "#7b3fa0",
+      "position": { "col": 15, "row": 5 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Core domain logic. Dispatches email (SES) and push (SNS) notifications. Persists delivery log.",
+        "file": "src/notifications/handler.py",
+        "notes": "Python 3.12. 128 MB."
+      }
+    },
+    {
+      "id": "notif_db",
+      "label": "DynamoDB",
+      "type": "database",
+      "color": "#1a5fb4",
+      "position": { "col": 15, "row": 7 },
+      "meta": {
+        "description": "Secondary storage adapter. Notifications table — notificationId (PK), customerId (GSI).",
+        "notes": "On-demand. 30-day TTL."
+      }
+    },
+
+    {
+      "id": "eventbridge",
+      "label": "EventBridge Bus",
+      "type": "service",
+      "icon": "bolt",
+      "color": "#d45b00",
+      "position": { "col": 9, "row": 9 },
+      "size": { "w": 2, "h": 1 },
+      "meta": {
+        "description": "Custom event bus 'platform-events'. Receives domain events and routes them via rules to subscriber SQS queues in other bounded contexts.",
+        "notes": "Archiving: 90 days. Schema registry enabled."
+      }
+    }
+  ],
+  "connections": [
+    { "id": "c_client_orders",   "from": "client",          "to": "orders_apigw",    "label": "POST /orders",       "route": "auto" },
+    { "id": "c_client_products", "from": "client",          "to": "products_apigw",  "label": "GET /products",      "route": "auto" },
+    { "id": "c_client_notif",    "from": "client",          "to": "notif_apigw",     "label": "GET /notifications", "route": "auto" },
+
+    { "id": "c_oapigw_lambda",   "from": "orders_apigw",   "to": "orders_lambda",   "label": "invoke",             "route": "auto" },
+    { "id": "c_osqs_lambda",     "from": "orders_sqs",     "to": "orders_lambda",   "label": "event trigger",      "route": "auto" },
+    { "id": "c_olambda_db",      "from": "orders_lambda",  "to": "orders_db",       "label": "PutItem",            "route": "auto" },
+    { "id": "c_olambda_eb",      "from": "orders_lambda",  "to": "eventbridge",     "label": "OrderPlaced",        "route": "auto" },
+
+    { "id": "c_papigw_lambda",   "from": "products_apigw", "to": "products_lambda", "label": "invoke",             "route": "auto" },
+    { "id": "c_psqs_lambda",     "from": "products_sqs",   "to": "products_lambda", "label": "event trigger",      "route": "auto" },
+    { "id": "c_plambda_db",      "from": "products_lambda","to": "products_db",     "label": "PutItem",            "route": "auto" },
+    { "id": "c_plambda_eb",      "from": "products_lambda","to": "eventbridge",     "label": "StockDepleted",      "route": "auto" },
+
+    { "id": "c_napigw_lambda",   "from": "notif_apigw",   "to": "notif_lambda",    "label": "invoke",             "route": "auto" },
+    { "id": "c_nsqs_lambda",     "from": "notif_sqs",     "to": "notif_lambda",    "label": "event trigger",      "route": "auto" },
+    { "id": "c_nlambda_db",      "from": "notif_lambda",  "to": "notif_db",        "label": "PutItem",            "route": "auto" },
+    { "id": "c_nlambda_eb",      "from": "notif_lambda",  "to": "eventbridge",     "label": "NotifSent",          "route": "auto" },
+
+    { "id": "c_eb_osqs",  "from": "eventbridge", "to": "orders_sqs",   "label": "rule match", "route": [{"col": 4,  "row": 8}] },
+    { "id": "c_eb_psqs",  "from": "eventbridge", "to": "products_sqs", "label": "rule match", "route": [{"col": 10, "row": 8}] },
+    { "id": "c_eb_nsqs",  "from": "eventbridge", "to": "notif_sqs",    "label": "rule match", "route": [{"col": 16, "row": 8}] }
+  ],
+  "steps": [
+    {
+      "id": 0,
+      "name": "Overview",
+      "title": "Hexagonal Architecture — Three Domains",
+      "description": "Three bounded contexts (Orders, Products, Notifications) each expose primary adapters (REST + SQS) on their driving side and secondary adapters (DynamoDB + EventBridge) on their driven side. Domains never call each other directly — all cross-domain communication flows through the shared EventBridge event bus.",
+      "highlight": [],
+      "active_connections": [
+        "c_client_orders", "c_client_products", "c_client_notif",
+        "c_oapigw_lambda", "c_papigw_lambda", "c_napigw_lambda",
+        "c_olambda_eb", "c_plambda_eb",
+        "c_eb_osqs", "c_eb_psqs", "c_eb_nsqs"
+      ],
+      "camera": { "focus": null },
+      "streams": [
+        { "connection": "c_client_orders",   "color": "#2d6a9f" },
+        { "connection": "c_client_products", "color": "#2d9f6a" },
+        { "connection": "c_client_notif",    "color": "#c47d00" },
+        { "connection": "c_olambda_eb",      "color": "#d45b00" },
+        { "connection": "c_plambda_eb",      "color": "#d45b00" },
+        { "connection": "c_eb_psqs",         "color": "#d45b00" },
+        { "connection": "c_eb_nsqs",         "color": "#d45b00" }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "REST request",
+      "title": "Client places an order via REST",
+      "description": "A client POSTs to /orders. The Orders domain's API Gateway is the sole entry point — the client knows nothing about the Lambda core or the database behind it. This is the primary (driving) REST adapter in action.",
+      "highlight": ["client", "orders_apigw"],
+      "active_connections": ["c_client_orders"],
+      "camera": { "focus": null },
+      "annotations": [
+        {
+          "type": "callout",
+          "target": "client",
+          "text": "POST /orders  { customerId, items: [{productId, qty}] }"
+        }
+      ],
+      "packet": {
+        "connection": "c_client_orders",
+        "shape": "document",
+        "data": {
+          "method": "POST",
+          "path": "/orders",
+          "body": { "customerId": "cust_7f3a", "items": [{ "productId": "prod_42", "qty": 2 }] }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "API GW → Lambda",
+      "title": "API Gateway invokes Orders Lambda",
+      "description": "The primary adapter (API Gateway) translates the HTTP request into a Lambda event and invokes the core. The core is unaware of HTTP — it only sees a command object. This is the hexagonal boundary: the adapter speaks HTTP, the core speaks domain language.",
+      "highlight": ["orders_apigw", "orders_lambda"],
+      "active_connections": ["c_oapigw_lambda"],
+      "camera": { "focus": "orders_apigw", "zoom": 1.4 },
+      "annotations": [
+        {
+          "type": "transform",
+          "target": "orders_apigw",
+          "text": "HTTP → PlaceOrderCommand({ customerId, items })"
+        }
+      ],
+      "packet": {
+        "connection": "c_oapigw_lambda",
+        "shape": "envelope",
+        "data": {
+          "command": "PlaceOrderCommand",
+          "customerId": "cust_7f3a",
+          "items": [{ "productId": "prod_42", "qty": 2 }]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "Persist order",
+      "title": "Lambda writes order to DynamoDB",
+      "description": "The Orders Lambda validates the command, creates an Order aggregate, and calls the secondary storage adapter (DynamoDB). The core defines a port interface (OrderRepository); the DynamoDB class is the plug-in adapter that implements it.",
+      "highlight": ["orders_lambda", "orders_db"],
+      "active_connections": ["c_olambda_db"],
+      "camera": { "focus": "orders_lambda", "zoom": 1.3 },
+      "annotations": [
+        {
+          "type": "transform",
+          "target": "orders_lambda",
+          "text": "Order.create() → OrderRepository.save(order)"
+        }
+      ],
+      "popouts": [
+        {
+          "title": "DynamoDB PutItem",
+          "anchor": "orders_db",
+          "data": {
+            "TableName": "Orders",
+            "Item": {
+              "orderId": "ord_9c1e",
+              "customerId": "cust_7f3a",
+              "status": "PENDING",
+              "createdAt": 1718000000000
+            }
+          }
+        }
+      ],
+      "packet": {
+        "connection": "c_olambda_db",
+        "shape": "document",
+        "arrivalStyle": "success",
+        "data": {
+          "TableName": "Orders",
+          "orderId": "ord_9c1e",
+          "status": "PENDING"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "Publish event",
+      "title": "Orders Lambda publishes OrderPlaced to EventBridge",
+      "description": "After persisting, the core fires a domain event via its secondary event-publishing adapter. The Lambda calls eventbridge.putEvents() — again, the core only knows about the port interface, not the specific AWS service behind it.",
+      "highlight": ["orders_lambda", "eventbridge"],
+      "active_connections": ["c_olambda_eb"],
+      "camera": { "focus": null },
+      "annotations": [
+        {
+          "type": "callout",
+          "target": "orders_lambda",
+          "text": "EventPublisher.publish(new OrderPlacedEvent({ orderId, customerId, items }))"
+        }
+      ],
+      "packet": {
+        "connection": "c_olambda_eb",
+        "shape": "sphere",
+        "arrivalStyle": "success",
+        "data": {
+          "source": "orders-domain",
+          "detail-type": "OrderPlaced",
+          "detail": { "orderId": "ord_9c1e", "customerId": "cust_7f3a", "totalAmount": 79.98 }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "EventBridge routes",
+      "title": "EventBridge routes OrderPlaced to subscriber queues",
+      "description": "EventBridge evaluates its rules and fans the OrderPlaced event out to the Products SQS queue (to reserve stock) and the Notifications SQS queue (to send a confirmation). The Orders domain has no knowledge of these subscribers.",
+      "highlight": ["eventbridge", "products_sqs", "notif_sqs"],
+      "active_connections": ["c_eb_psqs", "c_eb_nsqs"],
+      "camera": { "focus": "eventbridge", "zoom": 1.3 },
+      "annotations": [
+        {
+          "type": "transform",
+          "target": "eventbridge",
+          "text": "rule: detail-type = 'OrderPlaced' → Products SQS, Notifications SQS"
+        }
+      ],
+      "packets": [
+        {
+          "connection": "c_eb_psqs",
+          "shape": "sphere",
+          "data": { "detail-type": "OrderPlaced", "target": "products-sqs" }
+        },
+        {
+          "connection": "c_eb_nsqs",
+          "shape": "sphere",
+          "data": { "detail-type": "OrderPlaced", "target": "notif-sqs" }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Domains react",
+      "title": "Products reserves stock; Notifications sends confirmation",
+      "description": "The event triggers both subscriber Lambdas concurrently. Products Lambda decrements stock in its DynamoDB table. Notifications Lambda dispatches an order confirmation email via SES. Each domain reacts independently — neither knows about the other.",
+      "highlight": ["products_sqs", "products_lambda", "products_db", "notif_sqs", "notif_lambda", "notif_db"],
+      "active_connections": ["c_psqs_lambda", "c_nsqs_lambda", "c_plambda_db", "c_nlambda_db"],
+      "camera": { "focus": null },
+      "annotations": [
+        {
+          "type": "transform",
+          "target": "products_lambda",
+          "text": "StockService.reserve({ productId: 'prod_42', qty: 2 })"
+        },
+        {
+          "type": "callout",
+          "target": "notif_lambda",
+          "text": "ses.sendEmail({ to: 'cust@example.com', template: 'order-confirmed' })"
+        }
+      ],
+      "packets": [
+        {
+          "connection": "c_plambda_db",
+          "shape": "document",
+          "arrivalStyle": "success",
+          "data": { "TableName": "Products", "productId": "prod_42", "stockLevel": { "$decrement": 2 } }
+        },
+        {
+          "connection": "c_nlambda_db",
+          "shape": "document",
+          "arrivalStyle": "success",
+          "data": { "TableName": "Notifications", "notificationId": "ntf_c3a1", "type": "ORDER_CONFIRMED" }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Inbound event",
+      "title": "Products domain reacts to its own upstream events",
+      "description": "The Products domain is also event-driven inbound. When a pricing system updates a product price, EventBridge routes a ProductPriceUpdated event to the Orders SQS queue so pending orders can be repriced. The SQS queue is the second primary adapter alongside the REST API.",
+      "highlight": ["eventbridge", "orders_sqs", "orders_lambda"],
+      "active_connections": ["c_plambda_eb", "c_eb_osqs", "c_osqs_lambda"],
+      "camera": { "focus": null },
+      "annotations": [
+        {
+          "type": "callout",
+          "target": "products_lambda",
+          "text": "EventPublisher.publish(new ProductPriceUpdatedEvent({ productId, newPrice }))"
+        }
+      ],
+      "streams": [
+        { "connection": "c_plambda_eb", "color": "#d45b00" },
+        { "connection": "c_eb_osqs",    "color": "#d45b00" }
+      ],
+      "packet": {
+        "connection": "c_osqs_lambda",
+        "shape": "sphere",
+        "data": { "detail-type": "ProductPriceUpdated", "productId": "prod_42", "newPrice": 44.99 }
+      }
+    },
+    {
+      "id": 8,
+      "name": "Steady state",
+      "title": "System at scale — all adapters active",
+      "description": "At full load all three domains handle concurrent REST traffic and consume events in parallel. No domain calls another directly. The hexagonal boundary means each domain's core can be tested in isolation and its adapters swapped without touching business logic.",
+      "highlight": [],
+      "active_connections": [
+        "c_client_orders", "c_client_products", "c_client_notif",
+        "c_oapigw_lambda", "c_papigw_lambda", "c_napigw_lambda",
+        "c_osqs_lambda", "c_psqs_lambda", "c_nsqs_lambda",
+        "c_olambda_db", "c_plambda_db", "c_nlambda_db",
+        "c_olambda_eb", "c_plambda_eb", "c_nlambda_eb",
+        "c_eb_osqs", "c_eb_psqs", "c_eb_nsqs"
+      ],
+      "camera": { "focus": null },
+      "streams": [
+        { "connection": "c_client_orders",   "color": "#2d6a9f" },
+        { "connection": "c_client_products", "color": "#2d9f6a" },
+        { "connection": "c_client_notif",    "color": "#c47d00" },
+        { "connection": "c_oapigw_lambda",   "color": "#2d6a9f" },
+        { "connection": "c_papigw_lambda",   "color": "#2d9f6a" },
+        { "connection": "c_napigw_lambda",   "color": "#c47d00" },
+        { "connection": "c_olambda_eb",      "color": "#d45b00" },
+        { "connection": "c_plambda_eb",      "color": "#d45b00" },
+        { "connection": "c_eb_psqs",         "color": "#d45b00" },
+        { "connection": "c_eb_nsqs",         "color": "#d45b00" },
+        { "connection": "c_eb_osqs",         "color": "#d45b00" }
+      ]
+    }
+  ]
+}
