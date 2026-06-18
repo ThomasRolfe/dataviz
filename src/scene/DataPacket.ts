@@ -5,8 +5,8 @@ import { buildPacketGeometry } from '@/scene/shapeRegistry'
 import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
 
-// Small sphere that travels inside the tube.  Must fit within TUBE_RADIUS (0.35).
-const TRAVEL_SPHERE_RADIUS = 0.13
+// Sphere fills the tube interior — matches TUBE_RADIUS in ConnectionPipe.ts.
+const TRAVEL_SPHERE_RADIUS = 0.22
 
 const ARRIVAL_COLORS: Record<ArrivalStyle, number> = {
   error:   0xff4444,
