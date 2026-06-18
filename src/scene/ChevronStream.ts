@@ -3,26 +3,31 @@ import * as THREE from 'three'
 const COUNT     = 6
 const PERIOD_MS = 1800
 
-// Flat arrowhead chevron shape, pointing in +X direction in local XZ space
-// Made large enough to be clearly visible against glass tubes
-const W  = 0.22   // half-span across the tube
-const TIP = 0.30  // forward tip distance
-const T   = 0.07  // stem thickness (half)
+// Chevron ">" band shape, pointing in +X direction in local XZ space.
+// Two arms of constant thickness meeting at a tip — no filled interior.
+const W    = 0.20   // half-span (fits inside tube radius 0.22)
+const BACK = 0.14   // how far behind center the tail sits
+const TIP  = 0.22   // how far ahead of center the tip sits
+const T    = 0.055  // arm band thickness
 
 function buildChevronGeo(): THREE.BufferGeometry {
-  // Arrowhead "> " lying flat in XZ plane (Y=0).
-  // +X points forward (along tube tangent), +Z is lateral.
+  // The arm half-angle determines how much to recess the inner tip
+  // so arm width stays constant at T all the way to the point.
+  const halfAngle = Math.atan2(W, TIP + BACK)
+  const tipRecess = T / Math.sin(halfAngle)
+
+  // Shape defined in XY plane (+X forward, +Y lateral).
+  // Rotated to XZ plane below so it lies flat on the ground.
   const shape = new THREE.Shape()
-  shape.moveTo(TIP,    0)          // leading tip
-  shape.lineTo(0,      W)          // outer top
-  shape.lineTo(0,      T)          // inner top shoulder
-  shape.lineTo(-TIP * 0.5, T)     // tail top
-  shape.lineTo(-TIP * 0.5, -T)    // tail bottom
-  shape.lineTo(0,      -T)         // inner bottom shoulder
-  shape.lineTo(0,      -W)         // outer bottom
+  shape.moveTo(-BACK,            W)   // outer top tail
+  shape.lineTo( TIP,             0)   // outer tip
+  shape.lineTo(-BACK,           -W)   // outer bottom tail
+  shape.lineTo(-BACK,      -W + T)    // inner bottom tail
+  shape.lineTo( TIP - tipRecess, 0)   // inner tip (recessed for constant arm width)
+  shape.lineTo(-BACK,       W - T)    // inner top tail
   shape.closePath()
+
   const geo = new THREE.ShapeGeometry(shape)
-  // Rotate from XY plane to XZ plane (flat on ground)
   geo.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2))
   return geo
 }

@@ -3,7 +3,7 @@
     "title": "AWS Web Application",
     "description": "Typical AWS stack serving desktop and mobile clients through a load balancer, Nginx reverse proxy, PHP and Node.js services, RDS database, and Elasticsearch."
   },
-  "layout": { "grid": { "cols": 18, "rows": 10 } },
+  "layout": { "grid": { "cols": 19, "rows": 10 } },
   "zones": [
     {
       "id": "z_clients",
@@ -17,7 +17,7 @@
       "label": "AWS Cloud (us-east-1)",
       "color": "#d45b00",
       "outline": "dashed",
-      "bounds": { "col": 2, "row": 0, "width": 16, "height": 10 },
+      "bounds": { "col": 3, "row": 0, "width": 16, "height": 10 },
       "meta": { "description": "VPC with public and private subnets across two availability zones." }
     },
     {
@@ -25,7 +25,7 @@
       "label": "Edge / Ingress",
       "color": "#c47d00",
       "parentId": "z_aws",
-      "bounds": { "col": 3, "row": 2, "width": 3, "height": 6 },
+      "bounds": { "col": 4, "row": 2, "width": 4, "height": 6 },
       "meta": { "description": "Application Load Balancer + Nginx layer. Terminates TLS and routes by path." }
     },
     {
@@ -33,7 +33,7 @@
       "label": "Application Layer",
       "color": "#2d9f6a",
       "parentId": "z_aws",
-      "bounds": { "col": 7, "row": 1, "width": 5, "height": 8 },
+      "bounds": { "col": 8, "row": 1, "width": 5, "height": 8 },
       "meta": { "description": "PHP-FPM for page rendering, Node.js for API and real-time routes. Auto-scaled EC2 instances in private subnets." }
     },
     {
@@ -41,7 +41,7 @@
       "label": "Data Layer",
       "color": "#7b3fa0",
       "parentId": "z_aws",
-      "bounds": { "col": 13, "row": 1, "width": 4, "height": 8 },
+      "bounds": { "col": 14, "row": 1, "width": 4, "height": 8 },
       "meta": { "description": "Persistent storage: RDS PostgreSQL (Multi-AZ) and Elasticsearch (OpenSearch)." }
     }
   ],
@@ -68,7 +68,7 @@
       "type": "service",
       "icon": "networkWired",
       "color": "#d45b00",
-      "position": { "col": 4, "row": 4 },
+      "position": { "col": 5, "row": 4 },
       "size": { "w": 1, "h": 2 },
       "meta": {
         "description": "AWS Application Load Balancer. Terminates TLS (ACM cert), forwards HTTP/2 to Nginx target group.",
@@ -80,7 +80,7 @@
       "label": "Nginx",
       "type": "service",
       "logo": "nginx",
-      "position": { "col": 5, "row": 3 },
+      "position": { "col": 6, "row": 3 },
       "size": { "w": 1, "h": 4 },
       "meta": {
         "description": "Reverse proxy layer. Routes /api/* and /ws/* to Node.js; everything else to PHP-FPM. Serves static assets from S3 via signed URLs.",
@@ -92,7 +92,7 @@
       "label": "PHP-FPM",
       "type": "service",
       "logo": "php",
-      "position": { "col": 8, "row": 2 },
+      "position": { "col": 9, "row": 2 },
       "size": { "w": 2, "h": 3 },
       "meta": {
         "description": "Laravel application server. Handles SSR page requests, form submissions, and admin routes.",
@@ -105,7 +105,7 @@
       "label": "Node.js API",
       "type": "service",
       "logo": "nodeJs",
-      "position": { "col": 8, "row": 6 },
+      "position": { "col": 9, "row": 6 },
       "size": { "w": 2, "h": 3 },
       "meta": {
         "description": "Express REST + WebSocket server. Handles /api/* routes and real-time features (notifications, live updates).",
@@ -118,7 +118,7 @@
       "label": "RDS PostgreSQL",
       "type": "database",
       "logo": "aws",
-      "position": { "col": 14, "row": 3 },
+      "position": { "col": 15, "row": 3 },
       "size": { "w": 2, "h": 2 },
       "meta": {
         "description": "PostgreSQL 16, db.r6g.2xlarge, Multi-AZ deployment. Primary in us-east-1a, standby in us-east-1b.",
@@ -131,7 +131,7 @@
       "type": "database",
       "icon": "magnifyingGlass",
       "color": "#1e7eb0",
-      "position": { "col": 14, "row": 6 },
+      "position": { "col": 15, "row": 6 },
       "size": { "w": 2, "h": 3 },
       "meta": {
         "description": "AWS OpenSearch Service (Elasticsearch-compatible). 3-node cluster for full-text product and content search.",
