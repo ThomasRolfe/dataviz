@@ -86,16 +86,27 @@ outside the zone's top edge (folder-tab style).
 }
 ```
 
-| Field    | Type   | Notes |
-|----------|--------|-------|
-| `id`     | string | Unique. Referenced nowhere else — for your own bookkeeping only. |
-| `label`  | string | Short (1–3 words). Rendered as a flat plate on the ground plane outside the zone's near edge. |
-| `color`  | string | Hex colour. Used for fill, border, and label background. |
-| `bounds` | object | `col`/`row` = top-left corner. `width`/`height` in grid cells. |
+| Field      | Type   | Notes |
+|------------|--------|-------|
+| `id`       | string | Unique. Referenced by child zones via `parentId`. |
+| `label`    | string | Short (1–3 words). Rendered as a flat plate on the ground plane outside the zone's near edge. |
+| `color`    | string | Hex colour. Used for fill, border, and label background. |
+| `bounds`   | object | `col`/`row` = top-left corner. `width`/`height` in grid cells. |
+| `parentId` | string | Optional. ID of a parent zone. Nested zones render inside the parent with a slightly raised ground plane and independent label. Use to model sub-zones within a larger boundary (e.g. AZs inside a VPC). |
+| `outline`  | string | Optional. `"dashed"` draws the border as a dashed line instead of solid. Useful for logical boundaries (VPCs, cloud regions) that don't have a physical enclosure. |
+| `meta`     | object | Optional. `description` and `notes` strings shown in future tooltip UI. |
 
 **Zone sizing rule:** bounds should enclose all member components with at least
 one cell of padding on each side. This prevents the zone border from touching
 component meshes.
+
+**Nesting example:**
+```json
+{ "id": "z_aws",  "label": "AWS Cloud", "color": "#d45b00", "outline": "dashed",
+  "bounds": { "col": 2, "row": 0, "width": 16, "height": 10 } },
+{ "id": "z_app",  "label": "App Layer", "color": "#2d9f6a", "parentId": "z_aws",
+  "bounds": { "col": 5, "row": 1, "width": 6, "height": 8 } }
+```
 
 ---
 
@@ -158,8 +169,9 @@ exclusive with `logo` — if both are present `logo` takes precedence.
 
 ### 6.3 `logo` (optional)
 
-Renders a Font Awesome **brands** icon as a flat 2D logo on the ground plane,
-filling ~90% of one grid cell. Replaces the type geometry entirely.
+Renders a Font Awesome **brands** icon as a flat 2D logo on the top face of the
+component box, filling ~88% of the shorter dimension. Takes precedence over `shape`
+and `icon`.
 
 ```json
 { "logo": "stripe" }
@@ -167,16 +179,22 @@ filling ~90% of one grid cell. Replaces the type geometry entirely.
 { "logo": "github" }
 { "logo": "slack" }
 { "logo": "google" }
+{ "logo": "nginx" }
+{ "logo": "php" }
+{ "logo": "nodeJs" }
+{ "logo": "react" }
+{ "logo": "docker" }
+{ "logo": "kubernetes" }
 ```
 
-- Value must match a Font Awesome brands icon name in **camelCase-free lowercase**
-  (e.g. `"stripe"` → `faStripe`, `"aws"` → `faAws`).
+- Value must match a Font Awesome **brands** icon key in **camelCase** without the
+  `fa` prefix (e.g. `"nodeJs"` → `faNodeJs`, `"aws"` → `faAws`, `"stripe"` → `faStripe`).
 - The logo uses the same material colour as the component (controlled by `color`
   or the default for the `type`). Set `color` to the brand's hex colour for
   authentic branding.
-- Do not specify `shape` when using `logo` — `logo` takes precedence anyway.
-- Sizing: `size` defaults to `{ "w": 1, "h": 1 }`. A 1×1 component fills one
-  grid cell. Larger sizes fill proportionally.
+- Do not specify `shape` or `icon` alongside `logo` — `logo` takes precedence.
+- Sizing: `size` defaults to `{ "w": 1, "h": 1 }`. On rectangular components the
+  logo is square-fitted to avoid distortion.
 
 **Example — Stripe payment processor:**
 ```json
@@ -184,6 +202,40 @@ filling ~90% of one grid cell. Replaces the type geometry entirely.
   "id": "stripe", "label": "Stripe", "type": "external",
   "logo": "stripe", "color": "#635BFF",
   "position": { "col": 12, "row": 3 }
+}
+```
+
+### 6.4a `icon` (optional)
+
+Renders a Font Awesome **solid** icon on the top face of the component box as a
+white glyph on the component's colour. Use when there is no brand logo but you
+want a recognisable pictogram.
+
+```json
+{ "icon": "server" }
+{ "icon": "database" }
+{ "icon": "networkWired" }
+{ "icon": "magnifyingGlass" }
+{ "icon": "mobileScreen" }
+{ "icon": "shield" }
+{ "icon": "bolt" }
+{ "icon": "key" }
+{ "icon": "envelopeOpen" }
+{ "icon": "chartLine" }
+```
+
+- Value is a Font Awesome **solid** icon key in **camelCase** without the `fa` prefix
+  (e.g. `"magnifyingGlass"` → `faMagnifyingGlass`, `"networkWired"` → `faNetworkWired`).
+- The glyph is always white; the component's `color` (or type default) provides
+  the background. On rectangular components the icon is square-fitted.
+- `logo` takes precedence over `icon` if both are set.
+
+**Example — Elasticsearch node:**
+```json
+{
+  "id": "elasticsearch", "label": "Elasticsearch", "type": "database",
+  "icon": "magnifyingGlass", "color": "#1e7eb0",
+  "position": { "col": 14, "row": 4 }, "size": { "w": 2, "h": 2 }
 }
 ```
 
@@ -532,6 +584,61 @@ Each item uses the same schema as `packet`.
 - The `active_connections` array for the step should include every connection
   referenced across the entire `packets` array.
 
+### 8.11 `streams` / `stream` — continuous animated flow
+
+Streams render as a continuous river of chevron arrows flowing along one or more
+connection pipes. Unlike packets (which fire once per step), streams loop forever
+until the step changes. Use them for the overview step or any step that represents
+steady-state throughput rather than a single event.
+
+**Single stream:**
+```json
+"stream": { "connection": "c1", "color": "#4a9edd" }
+```
+
+**Multiple simultaneous streams:**
+```json
+"streams": [
+  { "connection": "c1", "color": "#4a9edd" },
+  { "connection": "c2", "color": "#5dbe8a" },
+  { "connection": "c3", "color": "#e8a838" }
+]
+```
+
+| Field        | Notes |
+|--------------|-------|
+| `connection` | Required. ID of the connection to animate. |
+| `color`      | Optional hex string. Defaults to the theme's packet colour if omitted. Use the zone/layer colour for clearest visual grouping. |
+
+**Rules:**
+- `stream` (singular) and `streams` (array) are both valid and can coexist in the
+  same step — the engine merges them.
+- Streams are independent of `active_connections` but look best when those
+  connections are also lit. Include stream connections in `active_connections`.
+- Streams do **not** interact with `packet` / `packets` — the two features can
+  coexist. Streams run continuously; packets are one-shot.
+- Streams travel in the `from` → `to` direction only (no `direction` field).
+- On the overview step (id: 0) streams are the idiomatic way to show live traffic
+  across the whole system, with one stream per active lane coloured to match its
+  architectural zone.
+
+**Overview step with streams:**
+```json
+{
+  "id": 0, "name": "Overview",
+  "title": "System Overview",
+  "description": "Traffic flows through all three layers simultaneously.",
+  "highlight": [],
+  "active_connections": ["c_client_lb", "c_lb_api", "c_api_db"],
+  "camera": { "focus": null },
+  "streams": [
+    { "connection": "c_client_lb", "color": "#2d6a9f" },
+    { "connection": "c_lb_api",    "color": "#c47d00" },
+    { "connection": "c_api_db",    "color": "#7b3fa0" }
+  ]
+}
+```
+
 ---
 
 ## 9. Layout heuristics
@@ -672,6 +779,21 @@ Step N+3: Retry or fallback (packet with arrivalStyle: warning)
     request that could succeed or fail, always set `arrivalStyle` to `"success"`,
     `"error"`, or `"warning"`. Omitting it leaves the packet colour neutral, which
     misses an opportunity to communicate the outcome visually.
+
+11. **Wrong case for `logo` / `icon` values.** Both fields use **camelCase** Font
+    Awesome key names with the `fa` prefix stripped. `"node-js"`, `"node_js"`, and
+    `"nodejs"` are all wrong — the correct value is `"nodeJs"`. When in doubt,
+    look up the Font Awesome icon name and remove the leading `fa`, keeping the
+    rest in camelCase.
+
+12. **Using `streams` on a step that has no visual traffic.** Streams are for
+    continuous steady-state flow. Don't add them to steps that represent a pause,
+    an internal transformation, or a camera-focus moment — use `packet` or
+    `packets` for discrete one-shot transfers instead.
+
+13. **`stream.connection` missing from `active_connections`.** If a step declares
+    a stream on a connection, that connection should also appear in
+    `active_connections` so the pipe illuminates while the stream runs.
 
 ---
 
@@ -827,10 +949,14 @@ Before returning a flow JSON, verify each of these:
 - [ ] Each component's `position.row + size.h` does not exceed `layout.grid.rows`
 - [ ] No two components occupy overlapping grid cells
 - [ ] Steps with a `packet` also have the packet's `connection` in `active_connections`
+- [ ] Steps with `stream` / `streams` reference only existing connection IDs
 - [ ] Data flows left-to-right (increasing col) in the general case
 - [ ] `packet.data` contains realistic representative values, not placeholders
 - [ ] `logo` components also have a `color` matching the brand's hex colour
+- [ ] `icon` values are camelCase Font Awesome solid icon names (no `fa` prefix)
+- [ ] `logo` values are camelCase Font Awesome brands icon names (no `fa` prefix)
 - [ ] Packets with a meaningful outcome have `arrivalStyle` set
+- [ ] Overview step (id: 0) uses `streams` for any connections that carry constant traffic
 
 ---
 
@@ -840,16 +966,21 @@ Before returning a flow JSON, verify each of these:
 |---------|--------|
 | Component meshes (all 6 types) | ✅ Rendered |
 | Component `shape` override (8 shapes) | ✅ Rendered |
-| Component `logo` (Font Awesome brands) | ✅ Rendered |
+| Component `logo` (Font Awesome brands, camelCase) | ✅ Rendered |
+| Component `icon` (Font Awesome solid, camelCase) | ✅ Rendered |
 | Component `color` override | ✅ Rendered |
 | Connection pipes | ✅ Rendered |
 | Connection `label` overlay at midpoint | ✅ Rendered |
 | Zone fills + 3D ground-plane labels | ✅ Rendered |
+| Zone `parentId` nesting | ✅ Rendered |
+| Zone `outline: "dashed"` border | ✅ Rendered |
 | Step highlight / dim transitions | ✅ Rendered |
+| Component penetration opacity (30% when packet enters) | ✅ Rendered |
 | Packet animation + hover tooltip | ✅ Rendered |
 | Packet `arrivalStyle` colour flash | ✅ Rendered |
 | Packet `direction: reverse` (return path on same pipe) | ✅ Rendered |
 | Multiple simultaneous packets (`packets[]`) | ✅ Rendered |
+| Chevron streams (`stream` / `streams[]`) | ✅ Rendered |
 | Annotation cards with leader lines | ✅ Rendered (`callout`, `transform`) |
 | Annotation `style` badge + icon (`info`, `success`, `warning`, `error`) | ✅ Rendered |
 | Camera pan + zoom per step | ✅ Rendered |
