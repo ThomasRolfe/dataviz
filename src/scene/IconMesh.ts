@@ -78,10 +78,13 @@ function buildIconBoxMeshes(
   iconMat.polygonOffsetUnits  = -2
   iconMat.needsUpdate        = true
 
-  // PlaneGeometry lying flat on top of the box, face up
-  const planeY = meshSize.y / 2 + 0.01
-  const face   = new THREE.Mesh(
-    new THREE.PlaneGeometry(meshSize.x * 0.88, meshSize.z * 0.88),
+  // PlaneGeometry lying flat on top of the box, face up.
+  // Use the shorter dimension so the square canvas texture is never stretched
+  // on wide or deep rectangular components.
+  const iconSize = Math.min(meshSize.x, meshSize.z) * 0.88
+  const planeY   = meshSize.y / 2 + 0.01
+  const face     = new THREE.Mesh(
+    new THREE.PlaneGeometry(iconSize, iconSize),
     iconMat,
   )
   face.rotation.x  = -Math.PI / 2
