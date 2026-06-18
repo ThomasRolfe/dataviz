@@ -107,6 +107,11 @@ const MultiPacketSchema = z.object({
   arrivalStyle: enumStr(ARRIVAL_STYLES, 'Invalid packets[].arrivalStyle').optional(),
 })
 
+const StreamDefSchema = z.object({
+  connection: z.string(),
+  color:      z.string().optional(),
+})
+
 const StepSchema = z.object({
   id:                 z.number(),
   title:              z.string(),
@@ -122,6 +127,8 @@ const StepSchema = z.object({
   popouts:     z.array(PopoutSchema).optional(),
   packet:      PacketSchema.nullable().optional(),
   packets:     z.array(MultiPacketSchema).optional(),
+  stream:      StreamDefSchema.nullable().optional(),
+  streams:     z.array(StreamDefSchema).optional(),
 })
 
 // ── Root schema with cross-reference checks ───────────────────────────────────
@@ -179,6 +186,24 @@ export const FlowDefinitionSchema = z.object({
           code:    z.ZodIssueCode.custom,
           path:    ['steps', si, 'packets', pi, 'connection'],
           message: `References unknown connection: ${pkt.connection}`,
+        })
+      }
+    })
+    if (step.stream) {
+      if (!connectionIds.has(step.stream.connection)) {
+        ctx.addIssue({
+          code:    z.ZodIssueCode.custom,
+          path:    ['steps', si, 'stream', 'connection'],
+          message: `References unknown connection: ${step.stream.connection}`,
+        })
+      }
+    }
+    step.streams?.forEach((s, si2) => {
+      if (!connectionIds.has(s.connection)) {
+        ctx.addIssue({
+          code:    z.ZodIssueCode.custom,
+          path:    ['steps', si, 'streams', si2, 'connection'],
+          message: `References unknown connection: ${s.connection}`,
         })
       }
     })
