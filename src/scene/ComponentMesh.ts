@@ -110,9 +110,8 @@ export class ComponentMesh {
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(({ opacity, r, g, b }) => {
           if (!this.penetrated) {
-            this.mat.opacity      = opacity
-            this.mat.transparent  = opacity < 1.0
-            this.iconMat.opacity  = opacity
+            this.mat.opacity     = opacity
+            this.iconMat.opacity = opacity
           }
           this.mat.emissive.setRGB(r, g, b)
         })
@@ -132,7 +131,6 @@ export class ComponentMesh {
       .easing(TWEEN.Easing.Quadratic.InOut)
       .onUpdate(({ opacity }) => {
         this.mat.opacity     = opacity
-        this.mat.transparent = opacity < 1.0
         this.iconMat.opacity = opacity
       })
       .onComplete(() => { this.penetrationTween = null })

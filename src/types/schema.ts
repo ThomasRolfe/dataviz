@@ -96,6 +96,11 @@ export interface Popout {
 export type PacketShape   = 'sphere' | 'document' | 'token' | 'blob' | 'envelope'
 export type ArrivalStyle  = 'error' | 'success' | 'warning'
 
+export interface StreamDef {
+  connection: string
+  color?:     string
+}
+
 export interface Packet {
   connection:    string
   shape:         PacketShape
@@ -119,6 +124,8 @@ export interface Step {
   popouts?: Popout[]
   packet?: Packet | null
   packets?: Packet[]
+  stream?:  StreamDef | null
+  streams?: StreamDef[]
 }
 
 export interface FlowDefinition {

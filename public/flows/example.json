@@ -85,8 +85,13 @@
       "title": "Telemetry Pipeline Overview",
       "description": "A button click in the browser travels through a collector API and Kafka topic before landing in ClickHouse.",
       "highlight": [],
-      "active_connections": [],
-      "camera": { "focus": null }
+      "active_connections": ["c1", "c2", "c3"],
+      "camera": { "focus": null },
+      "streams": [
+        { "connection": "c1", "color": "#4a9edd" },
+        { "connection": "c2", "color": "#5dbe8a" },
+        { "connection": "c3", "color": "#e8a838" }
+      ]
     },
     {
       "id": 1,

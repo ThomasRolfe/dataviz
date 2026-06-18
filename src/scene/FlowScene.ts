@@ -8,6 +8,7 @@ import { ComponentMesh } from '@/scene/ComponentMesh'
 import type { MeshState } from '@/scene/ComponentMesh'
 import { ConnectionPipe } from '@/scene/ConnectionPipe'
 import { DataPacket } from '@/scene/DataPacket'
+import { ChevronStream } from '@/scene/ChevronStream'
 import { HoverSystem } from '@/scene/HoverSystem'
 import { setupLighting, updateLighting } from '@/scene/LightingSetup'
 import type { SceneLights } from '@/scene/LightingSetup'
@@ -40,6 +41,7 @@ export class FlowScene extends SceneManager {
   private packetPipeMap:   Map<DataPacket, string> = new Map()
   private arrivedPackets:  Set<DataPacket> = new Set()
   private penetratedIds:   Set<string> = new Set()
+  private activeStreams:    ChevronStream[] = []
   private hoverSystem:     HoverSystem
   zoneLabelPositions:      Map<string, THREE.Vector3> = new Map()
   private overviewTarget:  THREE.Vector3
@@ -231,6 +233,10 @@ export class FlowScene extends SceneManager {
     }
     this.penetratedIds.clear()
 
+    // 1b. Dispose previous streams
+    for (const s of this.activeStreams) s.dispose()
+    this.activeStreams = []
+
     // 2. Transition component materials
     for (const [id, mesh] of this.components) {
       const state: MeshState = step.highlight.includes(id)
@@ -274,6 +280,20 @@ export class FlowScene extends SceneManager {
       pipe.setPacketTraversing(true, 200)
       packet.travel(pipe.curve, PACKET_TRAVEL_MS, def.direction === 'reverse')
     })
+
+    // 6. Launch chevron streams
+    const streamDefs = [
+      ...(step.stream  ? [step.stream]    : []),
+      ...(step.streams ?? []),
+    ]
+    for (const def of streamDefs) {
+      const pipe = this.pipes.get(def.connection)
+      if (!pipe) continue
+      const color = def.color
+        ? new THREE.Color(def.color).getHex()
+        : THEME_COLORS[this.currentTheme].packetColor
+      this.activeStreams.push(new ChevronStream(this.scene, pipe.curve, color))
+    }
   }
 
   private animateCamera(config: Step['camera'], durationMs: number): void {
@@ -363,6 +383,7 @@ export class FlowScene extends SceneManager {
     if (!this.isPanning) this.hoverSystem.update()
 
     const now = performance.now()
+    for (const s of this.activeStreams) s.update(now)
     for (const packet of this.activePackets) {
       packet.update(now)
 
@@ -441,6 +462,8 @@ export class FlowScene extends SceneManager {
       packet.dispose(this.scene)
     }
     this.activePackets = []
+    for (const s of this.activeStreams) s.dispose()
+    this.activeStreams = []
     this.penetratedIds.clear()
     super.dispose()
   }
