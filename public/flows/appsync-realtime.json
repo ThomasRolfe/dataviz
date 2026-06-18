@@ -3,7 +3,7 @@
     "title": "AWS AppSync Real-Time Serverless Web App",
     "description": "A movie voting app using AppSync, Lambda, Step Functions, and DynamoDB. CloudWatch Events kick off a scheduled workflow that rotates the current movie every 60 seconds. All connected clients receive real-time updates via GraphQL subscriptions over WebSocket."
   },
-  "layout": { "grid": { "cols": 18, "rows": 10 } },
+  "layout": { "grid": { "cols": 20, "rows": 10 } },
   "zones": [
     {
       "id": "z_clients",
@@ -17,7 +17,7 @@
       "label": "AWS Cloud",
       "color": "#d45b00",
       "outline": "dashed",
-      "bounds": { "col": 2, "row": 0, "width": 13, "height": 10 },
+      "bounds": { "col": 3, "row": 0, "width": 14, "height": 10 },
       "meta": { "description": "Fully serverless. Lambda, AppSync, Step Functions, and DynamoDB all scale to zero." }
     },
     {
@@ -25,7 +25,7 @@
       "label": "Orchestration",
       "color": "#c0143c",
       "parentId": "z_aws",
-      "bounds": { "col": 8, "row": 0, "width": 6, "height": 6 },
+      "bounds": { "col": 9, "row": 0, "width": 7, "height": 6 },
       "meta": { "description": "Scheduled pipeline: CloudWatch fires every 60 s → Step Functions loops → Lambda invoked every 10 s." }
     },
     {
@@ -33,14 +33,14 @@
       "label": "Storage",
       "color": "#1a5fb4",
       "parentId": "z_aws",
-      "bounds": { "col": 2, "row": 6, "width": 11, "height": 4 },
+      "bounds": { "col": 3, "row": 6, "width": 12, "height": 4 },
       "meta": { "description": "DynamoDB tables for movie metadata and vote counts. Local Resolver for ephemeral chat pub/sub (no persistence)." }
     },
     {
       "id": "z_external",
       "label": "The Movie DB",
       "color": "#1b1b2e",
-      "bounds": { "col": 15, "row": 2, "width": 3, "height": 5 },
+      "bounds": { "col": 17, "row": 2, "width": 3, "height": 5 },
       "meta": { "description": "Third-party REST API (themoviedb.org). Lambda calls GET /movie/popular to fetch metadata for a random top-50 movie." }
     }
   ],
@@ -62,7 +62,7 @@
       "type": "function",
       "icon": "clock",
       "color": "#e05c00",
-      "position": { "col": 9, "row": 1 },
+      "position": { "col": 10, "row": 1 },
       "meta": {
         "description": "Scheduled EventBridge rule fires every 60 seconds and triggers the Step Functions state machine.",
         "notes": "Rule: rate(60 seconds). Target: StepFunctions:startExecution."
@@ -74,7 +74,7 @@
       "type": "service",
       "icon": "sitemap",
       "color": "#c0143c",
-      "position": { "col": 12, "row": 1 },
+      "position": { "col": 13, "row": 1 },
       "meta": {
         "description": "Standard workflow state machine. Loops up to 6 times per 60-second window, invoking Lambda every 10 seconds. Each iteration picks a new movie.",
         "notes": "States: Wait(10 s) → InvokeLambda → Choice(iterations < 6) → loop or End."
@@ -86,7 +86,7 @@
       "type": "function",
       "icon": "bolt",
       "color": "#e57010",
-      "position": { "col": 12, "row": 4 },
+      "position": { "col": 13, "row": 4 },
       "meta": {
         "description": "Core backend function. Fetches a random popular movie from The Movie DB API, sends GraphQL mutations to AppSync to update the current movie and zero votes, and handles vote processing via Lambda resolver.",
         "file": "src/lambda/handler.js",
@@ -99,7 +99,7 @@
       "type": "service",
       "icon": "plug",
       "color": "#7b3fa0",
-      "position": { "col": 5, "row": 4 },
+      "position": { "col": 6, "row": 4 },
       "size": { "w": 2, "h": 1 },
       "meta": {
         "description": "Managed GraphQL API. Handles mutations (updateMovie, castVote, sendMessage), resolves queries, and broadcasts subscription events to all connected clients over WebSocket. Local Resolver used for ephemeral chat.",
@@ -111,7 +111,7 @@
       "label": "DynamoDB — Movies",
       "type": "database",
       "color": "#1a5fb4",
-      "position": { "col": 3, "row": 7 },
+      "position": { "col": 4, "row": 7 },
       "meta": {
         "description": "Stores the currently active movie: id, title, synopsis, posterUrl. A single item overwritten on each rotation.",
         "notes": "On-demand capacity. Table: Movies. PK: movieId (always 'CURRENT')."
@@ -122,7 +122,7 @@
       "label": "DynamoDB — Votes",
       "type": "database",
       "color": "#1a5fb4",
-      "position": { "col": 7, "row": 7 },
+      "position": { "col": 8, "row": 7 },
       "meta": {
         "description": "Atomic counter table for vote tallies per movie. Zeroed on each rotation; incremented on every castVote mutation.",
         "notes": "UpdateItem with ADD #votes 1 for atomic increment. Table: Votes. PK: movieId."
@@ -134,7 +134,7 @@
       "type": "queue",
       "icon": "comments",
       "color": "#546e7a",
-      "position": { "col": 11, "row": 7 },
+      "position": { "col": 12, "row": 7 },
       "meta": {
         "description": "AppSync LOCAL data source for the public chatroom. Routes sendMessage mutations directly to onMessage subscription triggers with no Lambda invocation and no DynamoDB write — messages are ephemeral.",
         "notes": "sendMessage mutation → LOCAL → onMessage subscription. Not persisted."
@@ -146,7 +146,7 @@
       "type": "external",
       "icon": "film",
       "color": "#1b1b2e",
-      "position": { "col": 16, "row": 3 },
+      "position": { "col": 18, "row": 3 },
       "meta": {
         "description": "Third-party REST API (api.themoviedb.org/3). Lambda calls GET /movie/popular, picks a random entry from the top-50 list, and retrieves full metadata.",
         "notes": "Bearer token auth. Rate limit: 40 req/10 s."
@@ -176,13 +176,7 @@
         "c_cw_sf", "c_sf_lambda", "c_lambda_appsync",
         "c_appsync_clients", "c_clients_appsync"
       ],
-      "camera": { "focus": null },
-      "streams": [
-        { "connection": "c_cw_sf",          "color": "#e05c00" },
-        { "connection": "c_sf_lambda",       "color": "#c0143c" },
-        { "connection": "c_appsync_clients", "color": "#7b3fa0" },
-        { "connection": "c_clients_appsync", "color": "#546e7a" }
-      ]
+      "camera": { "focus": null }
     },
     {
       "id": 1,
@@ -325,9 +319,6 @@
           "text": "subscription.onUpdateCurrentMovie → broadcast to all WebSocket connections"
         }
       ],
-      "streams": [
-        { "connection": "c_appsync_clients", "color": "#7b3fa0" }
-      ],
       "packet": {
         "connection": "c_appsync_clients",
         "shape": "envelope",
@@ -404,10 +395,6 @@
           "target": "appsync",
           "text": "sendMessage → LOCAL resolver → onMessage subscription trigger (no PutItem)"
         }
-      ],
-      "streams": [
-        { "connection": "c_clients_appsync",  "color": "#546e7a" },
-        { "connection": "c_appsync_clients",  "color": "#7b3fa0" }
       ],
       "packet": {
         "connection": "c_appsync_resolver",
