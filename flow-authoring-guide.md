@@ -100,6 +100,27 @@ outside the zone's top edge (folder-tab style).
 one cell of padding on each side. This prevents the zone border from touching
 component meshes.
 
+**Zone gap rule (critical):** Adjacent zones that are side-by-side MUST have at
+least **1 empty grid column** between them. If zone A ends at col X (i.e.
+`col + width - 1 = X`) and zone B starts immediately after at `col X + 1`, the
+isometric 3D renderer will make their walls visually overlap. Always leave a
+blank column gap:
+
+```
+WRONG — zones touch (col 0 width 2 ends at 1; col 2 starts immediately):
+  z_clients: { "col": 0, "width": 2 }   → occupies cols 0–1
+  z_aws:     { "col": 2, "width": 13 }  → occupies cols 2–14  ← OVERLAPS VISUALLY
+
+CORRECT — one empty column between (col 2 is the gap):
+  z_clients: { "col": 0, "width": 2 }   → occupies cols 0–1
+  z_aws:     { "col": 3, "width": 13 }  → occupies cols 3–15  ← clear gap at col 2
+```
+
+When you add a gap column you must also expand `layout.grid.cols` by the same
+amount and shift every zone, sub-zone, and component that lives to the right of
+the gap by +1 column. This rule applies between ANY two sibling zones —
+including between an external zone and the main cloud zone.
+
 **Nesting example:**
 ```json
 { "id": "z_aws",  "label": "AWS Cloud", "color": "#d45b00", "outline": "dashed",
@@ -584,60 +605,48 @@ Each item uses the same schema as `packet`.
 - The `active_connections` array for the step should include every connection
   referenced across the entire `packets` array.
 
-### 8.11 `streams` / `stream` — continuous animated flow
+### 8.11 `streams` / `stream` — continuous data stream animation
 
-Streams render as a continuous river of chevron arrows flowing along one or more
-connection pipes. Unlike packets (which fire once per step), streams loop forever
-until the step changes. Use them for the overview step or any step that represents
-steady-state throughput rather than a single event.
+Streams render as a continuous river of chevron arrows flowing along a connection pipe.
 
-**Single stream:**
+**Only use streams for connections that carry a genuine, ongoing, unbounded flow of data** — the kind that would be described as a "stream" in engineering terms. The animation is literally a stream; it should only appear where there is literally a stream.
+
+**Correct uses:**
+- Video or audio live-stream delivery (encoder → CDN → viewer)
+- Telemetry / sensor data pumped continuously from a device
+- Kafka topic consuming events at a constant rate
+- A Kinesis Data Stream or similar ingestion pipeline
+- Log aggregation pipelines (Fluentd / Logstash → Elasticsearch)
+
+**Incorrect uses — do not use streams for:**
+- HTTP request/response cycles (use `packet`)
+- Scheduled triggers or cron jobs (use `packet`)
+- WebSocket subscription broadcasts (use `packet` — each broadcast is a discrete event)
+- "Overview" decoration to make a diagram look busier
+- General API traffic between services
+
 ```json
-"stream": { "connection": "c1", "color": "#4a9edd" }
+"stream": { "connection": "c_encoder_cdn", "color": "#e53935" }
 ```
 
-**Multiple simultaneous streams:**
 ```json
 "streams": [
-  { "connection": "c1", "color": "#4a9edd" },
-  { "connection": "c2", "color": "#5dbe8a" },
-  { "connection": "c3", "color": "#e8a838" }
+  { "connection": "c_sensor_kinesis", "color": "#e57010" },
+  { "connection": "c_kinesis_lambda", "color": "#e57010" }
 ]
 ```
 
 | Field        | Notes |
 |--------------|-------|
 | `connection` | Required. ID of the connection to animate. |
-| `color`      | Optional hex string. Defaults to the theme's packet colour if omitted. Use the zone/layer colour for clearest visual grouping. |
+| `color`      | Optional hex string. Defaults to the theme's packet colour if omitted. |
 
 **Rules:**
-- `stream` (singular) and `streams` (array) are both valid and can coexist in the
-  same step — the engine merges them.
-- Streams are independent of `active_connections` but look best when those
-  connections are also lit. Include stream connections in `active_connections`.
-- Streams do **not** interact with `packet` / `packets` — the two features can
-  coexist. Streams run continuously; packets are one-shot.
+- `stream` (singular) and `streams` (array) are both valid and can coexist in the same step — the engine merges them.
+- Include stream connections in `active_connections` so the pipe illuminates.
+- Streams do **not** interact with `packet` / `packets` — both can coexist in the same step.
 - Streams travel in the `from` → `to` direction only (no `direction` field).
-- On the overview step (id: 0) streams are the idiomatic way to show live traffic
-  across the whole system, with one stream per active lane coloured to match its
-  architectural zone.
-
-**Overview step with streams:**
-```json
-{
-  "id": 0, "name": "Overview",
-  "title": "System Overview",
-  "description": "Traffic flows through all three layers simultaneously.",
-  "highlight": [],
-  "active_connections": ["c_client_lb", "c_lb_api", "c_api_db"],
-  "camera": { "focus": null },
-  "streams": [
-    { "connection": "c_client_lb", "color": "#2d6a9f" },
-    { "connection": "c_lb_api",    "color": "#c47d00" },
-    { "connection": "c_api_db",    "color": "#7b3fa0" }
-  ]
-}
-```
+- If in doubt, use `packet` instead. A packet that loops back in the next step communicates rhythm without misrepresenting discrete events as continuous flows.
 
 ---
 
