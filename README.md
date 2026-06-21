@@ -28,22 +28,14 @@ Flows are plain JSON files in `public/flows/`. Drop a new `.json` file there and
 ## Screenshots
 
 ### Overview — isometric grid with zones and glass tube pipes
-<!-- screenshot -->
+<img width="1936" height="1255" alt="image" src="https://github.com/user-attachments/assets/e24c30c9-24e9-4ac7-9849-063b53eb8a34" />
 
-### Packet in transit through a connection
-<!-- screenshot -->
-
-### Step with annotation callout and camera zoom
-<!-- screenshot -->
-
-### Chevron stream animation on active connections
-<!-- screenshot -->
 
 ## Development
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Open `http://localhost:5173`. The default flow loads automatically; append `?flow=flows/aws-web-app.json` to load a specific file.
