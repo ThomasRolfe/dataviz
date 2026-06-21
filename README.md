@@ -1,73 +1,49 @@
-# React + TypeScript + Vite
+# FlowViz
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An animated isometric 3D data-flow diagram tool. Define a system architecture in a JSON file and step through an animated explanation of how data moves through it — complete with glowing glass tubes, flowing packets, camera focus, and annotation cards.
 
-Currently, two official plugins are available:
+## What it does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Renders components (services, databases, clients, queues, serverless functions) as 3D meshes on an isometric grid
+- Connects them with glass tube pipes that illuminate when active
+- Animates data packets travelling through the pipes, with optional arrival styles (success / error / warning)
+- Steps through a narrative sequence: each step can highlight components, activate connections, fire a packet, zoom the camera, or show annotation callouts
+- Supports zone groupings (with optional nesting and dashed outlines) to visually bound logical boundaries like cloud regions or bounded contexts
+- Chevron stream animation for genuine continuous data flows (Kafka, video, telemetry)
 
-## React Compiler
+## Authoring flows
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Flows are plain JSON files in `public/flows/`. Drop a new `.json` file there and pass its path as the `?flow=` query parameter.
 
-## Expanding the ESLint configuration
+**Authoring reference:** [`flow-authoring-guide.md`](./flow-authoring-guide.md) — full schema documentation optimised for LLM-assisted authoring.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**Example flows:**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+| File | Description |
+|------|-------------|
+| `public/flows/aws-web-app.json` | AWS stack: ALB → Nginx → PHP/Node → RDS + Elasticsearch |
+| `public/flows/hexagonal-architecture.json` | Three bounded contexts with shared EventBridge event bus |
+| `public/flows/appsync-realtime.json` | Serverless movie voting app with AppSync real-time subscriptions |
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Screenshots
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Overview — isometric grid with zones and glass tube pipes
+<!-- screenshot -->
+
+### Packet in transit through a connection
+<!-- screenshot -->
+
+### Step with annotation callout and camera zoom
+<!-- screenshot -->
+
+### Chevron stream animation on active connections
+<!-- screenshot -->
+
+## Development
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Open `http://localhost:5173`. The default flow loads automatically; append `?flow=flows/aws-web-app.json` to load a specific file.
