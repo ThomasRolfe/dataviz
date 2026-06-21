@@ -34,6 +34,9 @@ Flows are plain JSON files in `public/flows/`. Drop a new `.json` file there and
 ### Overview — isometric grid with zones and glass tube pipes
 <img width="1936" height="1255" alt="image" src="https://github.com/user-attachments/assets/e24c30c9-24e9-4ac7-9849-063b53eb8a34" />
 
+### Stream indicators
+<img width="1638" height="830" alt="image" src="https://github.com/user-attachments/assets/fd6b8034-4cb4-49f0-a29b-3beadf2f5406" />
+
 
 ## Development
 
