@@ -1,6 +1,8 @@
 # FlowViz
 
-An animated isometric 3D data-flow diagram tool. Define a system architecture in a JSON file and step through an animated explanation of how data moves through it — complete with glowing glass tubes, flowing packets, camera focus, and annotation cards.
+An animated isometric 3D data-flow diagram tool. Describe a system architecture in a JSON file and step through an animated explanation of how data moves through it — complete with glowing glass tubes, flowing packets, camera focus, and annotation cards.
+
+**FlowViz is designed to be driven by LLMs.** The authoring guide (`flow-authoring-guide.md`) is written as a structured reference that a language model can read once and immediately use to produce a valid, well-laid-out diagram JSON. Give an LLM the guide and a description of your system — AWS stack, microservices, event-driven pipeline, hexagonal architecture, etc. — and it will generate a ready-to-render flow in one pass.
 
 ## What it does
 
@@ -11,11 +13,13 @@ An animated isometric 3D data-flow diagram tool. Define a system architecture in
 - Supports zone groupings (with optional nesting and dashed outlines) to visually bound logical boundaries like cloud regions or bounded contexts
 - Chevron stream animation for genuine continuous data flows (Kafka, video, telemetry)
 
-## Authoring flows
+## Authoring flows with an LLM
 
 Flows are plain JSON files in `public/flows/`. Drop a new `.json` file there and pass its path as the `?flow=` query parameter.
 
-**Authoring reference:** [`flow-authoring-guide.md`](./flow-authoring-guide.md) — full schema documentation optimised for LLM-assisted authoring.
+**[`flow-authoring-guide.md`](./flow-authoring-guide.md)** is the single reference an LLM needs. It covers the full JSON schema, layout rules, zone gap requirements, packet/stream usage, annotation types, and camera controls — with enough examples that a model can produce a correct diagram without iteration. Attach it to a prompt like:
+
+> "Read flow-authoring-guide.md, then create a FlowViz JSON for [your system description]."
 
 **Example flows:**
 
