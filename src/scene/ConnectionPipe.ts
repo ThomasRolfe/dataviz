@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import * as TWEEN from '@tweenjs/tween.js'
+import { Tween, Easing } from '@tweenjs/tween.js'
+import { tweenGroup } from '@/scene/tweenGroup'
 import type { InternalConnection } from '@/types/internal'
 import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
@@ -95,7 +96,7 @@ export class ConnectionPipe {
     )
 
     return new Promise(resolve => {
-      new TWEEN.Tween({
+      new Tween({
         r:       mat.color.r,
         g:       mat.color.g,
         b:       mat.color.b,
@@ -103,7 +104,7 @@ export class ConnectionPipe {
         er:      mat.emissive.r,
         eg:      mat.emissive.g,
         eb:      mat.emissive.b,
-      })
+      }, tweenGroup)
         .to({
           r:       targetColor.r,
           g:       targetColor.g,
@@ -113,7 +114,7 @@ export class ConnectionPipe {
           eg:      targetEmissive.g,
           eb:      targetEmissive.b,
         }, durationMs)
-        .easing(TWEEN.Easing.Quadratic.InOut)
+        .easing(Easing.Quadratic.InOut)
         .onUpdate(({ r, g, b, opacity, er, eg, eb }) => {
           mat.color.setRGB(r, g, b)
           mat.opacity      = opacity
