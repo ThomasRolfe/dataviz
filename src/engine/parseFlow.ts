@@ -35,6 +35,66 @@ function bakeRoute(
   }
 }
 
+// ── Tube render-trim helpers ─────────────────────────────────────────────────
+//
+// The packet curve runs center-to-center so the packet can travel the full
+// length, but we only render the tube between the component edges so it doesn't
+// poke through the component meshes.
+
+function outsideXZ(
+  p: THREE.Vector3,
+  cx: number, cz: number,
+  hx: number, hz: number,
+): boolean {
+  return Math.abs(p.x - cx) > hx || Math.abs(p.z - cz) > hz
+}
+
+/** Find the t where the curve exits `comp` (searching forward from t=0). */
+function findStartTrim(curve: THREE.Curve<THREE.Vector3>, comp: InternalComponent): number {
+  const hx = comp.meshSize.x / 2
+  const hz = comp.meshSize.z / 2
+  const cx = comp.center.x
+  const cz = comp.center.z
+
+  // Coarse scan forward to bracket the exit point
+  let lo = 0, hi = -1
+  for (let i = 1; i <= 20; i++) {
+    const t = i / 20
+    if (outsideXZ(curve.getPoint(t), cx, cz, hx, hz)) { hi = t; break }
+  }
+  if (hi < 0) return 0  // never exits — keep full range
+
+  // Binary refine
+  for (let i = 0; i < 16; i++) {
+    const mid = (lo + hi) / 2
+    if (outsideXZ(curve.getPoint(mid), cx, cz, hx, hz)) hi = mid; else lo = mid
+  }
+  return hi
+}
+
+/** Find the t where the curve enters `comp` (searching backward from t=1). */
+function findEndTrim(curve: THREE.Curve<THREE.Vector3>, comp: InternalComponent): number {
+  const hx = comp.meshSize.x / 2
+  const hz = comp.meshSize.z / 2
+  const cx = comp.center.x
+  const cz = comp.center.z
+
+  // Coarse scan backward to bracket the entry point
+  let hi = 1, lo = -1
+  for (let i = 1; i <= 20; i++) {
+    const t = 1 - i / 20
+    if (outsideXZ(curve.getPoint(t), cx, cz, hx, hz)) { lo = t; break }
+  }
+  if (lo < 0) return 1  // never exits — keep full range
+
+  // Binary refine
+  for (let i = 0; i < 16; i++) {
+    const mid = (lo + hi) / 2
+    if (outsideXZ(curve.getPoint(mid), cx, cz, hx, hz)) lo = mid; else hi = mid
+  }
+  return lo
+}
+
 // ── Port-spreading helpers ────────────────────────────────────────────────────
 //
 // When N connections share the same source or destination, their attachment
@@ -167,6 +227,10 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
     const curve   = bakeRoute(conn, startPt, endPt)
     const tubePoints = curve.getPoints(64)
 
+    const t0 = findStartTrim(curve, from)
+    const t1 = findEndTrim(curve, to)
+    const renderTrim = { t0, t1: t1 > t0 ? t1 : 1 }
+
     const ic: InternalConnection = {
       id:    conn.id,
       from,
@@ -174,6 +238,7 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
       label: conn.label,
       curve,
       tubePoints,
+      renderTrim,
     }
     connections.set(conn.id, ic)
   }

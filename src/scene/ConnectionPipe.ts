@@ -9,6 +9,22 @@ const TUBE_SEGMENTS    = 64
 const TUBE_RADIUS      = 0.22
 const TUBE_RADIUS_SEGS = 12
 
+/** Wraps a curve and exposes only the [t0, t1] sub-range as [0, 1]. */
+class TrimmedCurve extends THREE.Curve<THREE.Vector3> {
+  inner: THREE.Curve<THREE.Vector3>
+  t0: number
+  t1: number
+  constructor(inner: THREE.Curve<THREE.Vector3>, t0: number, t1: number) {
+    super()
+    this.inner = inner
+    this.t0    = t0
+    this.t1    = t1
+  }
+  getPoint(t: number, target = new THREE.Vector3()): THREE.Vector3 {
+    return this.inner.getPoint(this.t0 + t * (this.t1 - this.t0), target)
+  }
+}
+
 const OPACITY_IDLE       = 0.12  // nearly invisible glass at rest
 const OPACITY_ACTIVE     = 0.28  // lit but still transparent
 const OPACITY_TRAVERSING = 0.50  // glowing glass — still see-through
@@ -34,8 +50,10 @@ export class ConnectionPipe {
     this.activeColor    = c.pipeActive
     this.activeEmissive = c.pipeActiveEmissive
 
+    const { t0, t1 } = connection.renderTrim
+    const renderCurve = new TrimmedCurve(connection.curve, t0, t1)
     const geo = new THREE.TubeGeometry(
-      connection.curve,
+      renderCurve,
       TUBE_SEGMENTS,
       TUBE_RADIUS,
       TUBE_RADIUS_SEGS,
