@@ -39,8 +39,13 @@ export class DataPacket {
         emissiveIntensity: 2.5,  // bright enough to glow visibly through tube walls
         metalness:         0.1,
         roughness:         0.05,
+        depthWrite:        true,  // packet always writes to depth buffer
       })
     )
+    // Render packets before component meshes (renderOrder 0 < 1) so that when a
+    // component goes semi-transparent (renderOrder 1, depthWrite false) the packet
+    // is already in the depth buffer and won't be culled.
+    this.mesh.renderOrder = 0
     scene.add(this.mesh)
   }
 
