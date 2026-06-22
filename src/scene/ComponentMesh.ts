@@ -124,6 +124,17 @@ export class ComponentMesh {
     if (this.penetrated === penetrated) return
     this.penetrated = penetrated
 
+    if (penetrated) {
+      // Disable depth writing so the semi-transparent component doesn't occlude
+      // the packet mesh sitting inside it, and render after the packet.
+      this.mat.depthWrite = false
+      this.group.renderOrder = 1
+    } else {
+      // Restore depth writing and default render order when fully opaque again.
+      this.mat.depthWrite = true
+      this.group.renderOrder = 0
+    }
+
     const targetOpacity = penetrated ? PENETRATED_OPACITY : STATE_OPACITY[this.currentState]
     this.penetrationTween?.stop()
     this.penetrationTween = new TWEEN.Tween({ opacity: this.mat.opacity })

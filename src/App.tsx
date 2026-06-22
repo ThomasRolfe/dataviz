@@ -8,6 +8,7 @@ import { ZoneTooltip } from '@/components/ZoneTooltip'
 import { PipeLabels } from '@/components/PipeLabels'
 import { PacketTooltip } from '@/components/PacketTooltip'
 import { StepSidebar } from '@/components/StepSidebar'
+import { ExportButton } from '@/components/ExportButton'
 import { buildGraph } from '@/engine/parseFlow'
 import { StepEngine } from '@/engine/stepEngine'
 import { useStepEngine } from '@/hooks/useStepEngine'
@@ -34,6 +35,7 @@ function App() {
   const [steps, setSteps] = useState<Step[]>([])
   const [error, setError] = useState<string | null>(null)
   const [bridge, setBridge] = useState<OverlayBridge | null>(null)
+  const [scene, setScene] = useState<FlowScene | null>(null)
   const [theme, setTheme] = useState<Theme>('light')
   const [arrivedTargets, setArrivedTargets] = useState<Set<string>>(new Set())
   const [pipeLabelData, setPipeLabelData] = useState<
@@ -117,18 +119,19 @@ function App() {
     <div className={styles.app}>
       <CanvasContainer
         graph={graph}
-        onSceneReady={(scene, b) => {
-          sceneRef.current = scene
+        onSceneReady={(s, b) => {
+          sceneRef.current = s
+          setScene(s)
           setBridge(b)
           scene.setTheme(theme)
-          scene.setHoverCallback(setHoveredId)
-          scene.setPacketArrivalCallback((targetId) => {
+          s.setHoverCallback(setHoveredId)
+          s.setPacketArrivalCallback((targetId) => {
             setArrivedTargets((prev) => new Set([...prev, targetId]))
           })
-          setPipeLabelData(scene.getConnectionLabelData())
+          setPipeLabelData(s.getConnectionLabelData())
           const eng = engineRef.current
           if (eng) {
-            scene.applyStep(eng.getState().step, null, 0)
+            s.applyStep(eng.getState().step, null, 0)
           }
         }}
       />
@@ -189,6 +192,8 @@ function App() {
           <StepControls engine={engine} />
         </>
       )}
+
+      <ExportButton scene={scene} engine={engine} />
     </div>
   )
 }

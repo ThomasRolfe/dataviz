@@ -92,8 +92,10 @@ export class ZoneRenderer {
     ctx.globalAlpha = 1
 
     ctx.font         = `700 ${fontPx}px system-ui, -apple-system, sans-serif`
-    ctx.fillStyle    = 'rgba(255,255,255,0.95)'
+    ctx.fillStyle    = '#ffffff'
     ctx.textBaseline = 'middle'
+    ctx.shadowColor  = 'rgba(0,0,0,0.7)'
+    ctx.shadowBlur   = 3 * DPR
     ctx.fillText(labelText, padX, canvas.height / 2)
 
     const texture = new THREE.CanvasTexture(canvas)
