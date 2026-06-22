@@ -347,4 +347,67 @@ describe('buildGraph()', () => {
     const conn = buildGraph(flow).connections.get('c_ab')!
     expect((conn.curve as THREE.CatmullRomCurve3).points.length).toBe(3) // start + 1 waypoint + end
   })
+
+  // ── renderTrim (tube clipping to component edges) ─────────────────────────
+
+  it('renderTrim is present on every connection', () => {
+    const graph = buildGraph(minimalFlow())
+    const conn  = graph.connections.get('c_ab')!
+    expect(conn.renderTrim).toBeDefined()
+    expect(typeof conn.renderTrim.t0).toBe('number')
+    expect(typeof conn.renderTrim.t1).toBe('number')
+  })
+
+  it('renderTrim.t0 > 0 — tube does not start at the from-component center', () => {
+    const graph = buildGraph(minimalFlow())
+    const conn  = graph.connections.get('c_ab')!
+    expect(conn.renderTrim.t0).toBeGreaterThan(0)
+  })
+
+  it('renderTrim.t1 < 1 — tube does not end at the to-component center', () => {
+    const graph = buildGraph(minimalFlow())
+    const conn  = graph.connections.get('c_ab')!
+    expect(conn.renderTrim.t1).toBeLessThan(1)
+  })
+
+  it('renderTrim.t0 < renderTrim.t1 — valid sub-range', () => {
+    const graph = buildGraph(minimalFlow())
+    const conn  = graph.connections.get('c_ab')!
+    expect(conn.renderTrim.t0).toBeLessThan(conn.renderTrim.t1)
+  })
+
+  it('curve point at renderTrim.t0 is outside the from-component XZ bounds', () => {
+    const graph = buildGraph(minimalFlow())
+    const conn  = graph.connections.get('c_ab')!
+    const from  = graph.components.get('a')!
+    const pt    = conn.curve.getPoint(conn.renderTrim.t0)
+    const hx    = from.meshSize.x / 2
+    const hz    = from.meshSize.z / 2
+    const insideX = Math.abs(pt.x - from.center.x) <= hx
+    const insideZ = Math.abs(pt.z - from.center.z) <= hz
+    expect(insideX && insideZ).toBe(false)
+  })
+
+  it('curve point at renderTrim.t1 is outside the to-component XZ bounds', () => {
+    const graph = buildGraph(minimalFlow())
+    const conn  = graph.connections.get('c_ab')!
+    const to    = graph.components.get('b')!
+    const pt    = conn.curve.getPoint(conn.renderTrim.t1)
+    const hx    = to.meshSize.x / 2
+    const hz    = to.meshSize.z / 2
+    const insideX = Math.abs(pt.x - to.center.x) <= hx
+    const insideZ = Math.abs(pt.z - to.center.z) <= hz
+    expect(insideX && insideZ).toBe(false)
+  })
+
+  it('full curve (for packets) still reaches component centers', () => {
+    const graph = buildGraph(minimalFlow())
+    const conn  = graph.connections.get('c_ab')!
+    const from  = graph.components.get('a')!
+    const to    = graph.components.get('b')!
+    const start = conn.curve.getPoint(0)
+    const end   = conn.curve.getPoint(1)
+    expect(start.x).toBeCloseTo(from.center.x, 1)
+    expect(end.x).toBeCloseTo(to.center.x, 1)
+  })
 })

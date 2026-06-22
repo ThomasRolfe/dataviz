@@ -31,7 +31,7 @@ export const STATE_OPACITY: Record<MeshState, number> = {
   dimmed:      0.45,
 }
 
-const PENETRATED_OPACITY = 0.30
+export const PENETRATED_OPACITY = 0.30
 
 
 export class ComponentMesh {
