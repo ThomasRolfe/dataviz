@@ -693,6 +693,103 @@ rows = max_parallel_tracks + 2
 For a simple linear pipeline with 4 components: `cols = 10, rows = 4`.
 For a flow with a 3-way fan-out: `cols = 10, rows = 6`.
 
+### 9.7 Component spacing and pipe clearance
+
+**The problem.** FlowViz routes connections as cubic-Bezier S-curves: the pipe
+exits the source component horizontally (along the column/X axis), curves, and
+arrives at the destination along the row/Z axis. A packet travelling this curve
+sweeps a wide arc in world space. Each frame, the engine tests every active
+packet's XZ position against every component's XZ bounding box — if the packet
+is inside a component's footprint, that component goes semi-transparent (30%
+opacity) to simulate the packet "passing through" it. This is intentional when
+the packet is actually bound for that component, but it is a visual bug when the
+component is unrelated to the active connection.
+
+When components are packed tightly — for example, two service boxes separated by
+only 1 empty cell with a third component positioned nearby — the S-curve
+connecting the first two can arc through the bounding box of the third, making it
+unintentionally go semi-transparent mid-animation.
+
+**The S-curve bulges widest at its midpoint.** The lateral deviation of the curve
+is greatest halfway between the source and destination. Components near the
+midpoint of a long connection are therefore at highest risk, even if they appear
+to be "off to the side" on the grid.
+
+**Minimum spacing rule.** Leave at least **2 empty grid cells** between any
+component and a pipe path that does not terminate at it. One cell is not enough —
+the S-curve control points extend into adjacent cells and the bounding box test
+operates in world units (each cell = 3.0 world units; each component mesh
+occupies 2.4 × 2.4 world units within its cell), so a 1-cell gap still puts the
+curve within the bounding box at the midpoint.
+
+**Row separation for parallel tracks.** Components on different flow paths
+(different rows/tracks) whose column range overlaps with an active connection
+should be separated by at least **1 empty row**, preferably **2**, from the
+connection's start and end rows. If a connection runs from row 2 to row 4 (a
+2-row drop), a component at row 3 whose column falls near the midpoint of that
+connection is almost certain to trigger the transparency effect.
+
+**WRONG — component too close to a crossing pipe:**
+
+```
+Cols:   0    1    2    3    4    5    6
+Row 1:  [A]                          [B]
+Row 2:            [C]
+```
+
+Component C is at col 2, row 2. The auto-route S-curve from A (col 0, row 1) to
+B (col 5, row 1) exits A horizontally, dips toward row 2 near the midpoint
+(around col 2–3), then returns to row 1 to arrive at B. C sits exactly where the
+curve bulges — it will go semi-transparent when a packet travels A→B even though
+C has nothing to do with that connection.
+
+**CORRECT — 2-cell row gap between the pipe path and the bystander component:**
+
+```
+Cols:   0    1    2    3    4    5    6
+Row 1:  [A]                          [B]
+Row 2:       (empty)
+Row 3:       (empty)
+Row 4:            [C]
+```
+
+C is now 3 rows below A and B. The S-curve's lateral swing never reaches row 4.
+
+**Also CORRECT — place the bystander in a different column range entirely:**
+
+```
+Cols:   0    1    2    3    4    5    6    7    8
+Row 1:  [A]                          [B]
+Row 2:                                         [C]
+```
+
+C is beyond the column range of the A→B connection, so the curve never sweeps
+near its bounding box.
+
+**Use zone sub-regions to enforce track separation.** If your flow has two
+parallel tracks that share a column range (e.g. a request path on row 2 and a
+notification path on row 5), place them in separate named sub-zones with a 2-row
+gap between zone boundaries. The zone visual boundary acts as a reminder to
+preserve clearance, and future authors editing the flow can see at a glance which
+rows are in use.
+
+```json
+{ "id": "z_request_track",  "label": "Request Path",  "color": "#2d9f6a",
+  "bounds": { "col": 3, "row": 1, "width": 10, "height": 2 } },
+{ "id": "z_notify_track",   "label": "Notify Path",   "color": "#9f7a2d",
+  "bounds": { "col": 3, "row": 5, "width": 10, "height": 2 } }
+```
+
+The 2-row gap between these zones (rows 3 and 4 are empty) ensures that an
+S-curve on the request track (rows 1–2) cannot reach a component on the notify
+track (rows 5–6).
+
+**Quick diagnostic.** If a component goes semi-transparent during a step where
+it is not highlighted and its connection is not active, a crossing pipe is the
+cause. Fix it by moving the component further from the crossing connection's
+midpoint column or by adding explicit waypoints to the connection to route it
+away from the bystander.
+
 ---
 
 ## 10. Step sequencing patterns
@@ -966,6 +1063,7 @@ Before returning a flow JSON, verify each of these:
 - [ ] `logo` values are camelCase Font Awesome brands icon names (no `fa` prefix)
 - [ ] Packets with a meaningful outcome have `arrivalStyle` set
 - [ ] Overview step (id: 0) uses `streams` for any connections that carry constant traffic
+- [ ] No unrelated component lies within 2 cells of a pipe midpoint on a crossing connection
 
 ---
 
