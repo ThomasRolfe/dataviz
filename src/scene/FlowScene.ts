@@ -436,10 +436,14 @@ export class FlowScene extends SceneManager {
     }
 
     for (const id of next) {
-      if (!this.penetratedIds.has(id)) this.components.get(id)?.setPenetrated(true)
+      if (!this.penetratedIds.has(id)) {
+        this.components.get(id)?.setPenetrated(true)
+      }
     }
     for (const id of this.penetratedIds) {
-      if (!next.has(id)) this.components.get(id)?.setPenetrated(false)
+      if (!next.has(id)) {
+        this.components.get(id)?.setPenetrated(false)
+      }
     }
     this.penetratedIds = next
   }
