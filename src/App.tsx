@@ -123,7 +123,7 @@ function App() {
           sceneRef.current = s
           setScene(s)
           setBridge(b)
-          scene.setTheme(theme)
+          s.setTheme(theme)
           s.setHoverCallback(setHoveredId)
           s.setPacketArrivalCallback((targetId) => {
             setArrivedTargets((prev) => new Set([...prev, targetId]))

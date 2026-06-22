@@ -68,5 +68,5 @@ export async function exportAnimationGif(
   }
 
   gif.finish()
-  return new Blob([gif.bytes()], { type: 'image/gif' })
+  return new Blob([gif.bytes().buffer as ArrayBuffer], { type: 'image/gif' })
 }
