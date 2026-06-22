@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import * as TWEEN from '@tweenjs/tween.js'
+import { tweenGroup } from '@/scene/tweenGroup'
 
 const FRUSTUM = 12
 
@@ -68,7 +68,7 @@ export class SceneManager {
     const tick = () => {
       this.rafId = requestAnimationFrame(tick)
       const delta = this.clock.getDelta()
-      TWEEN.update()
+      tweenGroup.update()
       this.onFrame(delta * 1000)
       this.renderer.render(this.scene, this.camera)
     }

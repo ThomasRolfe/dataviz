@@ -1,5 +1,7 @@
 import * as THREE from 'three'
-import * as TWEEN from '@tweenjs/tween.js'
+import { Tween, Easing } from '@tweenjs/tween.js'
+import type { Tween as TweenType } from '@tweenjs/tween.js'
+import { tweenGroup } from '@/scene/tweenGroup'
 import { SceneManager } from '@/scene/SceneManager'
 import { OverlayBridge } from '@/scene/OverlayBridge'
 import { GridFloor } from '@/scene/GridFloor'
@@ -48,7 +50,7 @@ export class FlowScene extends SceneManager {
   private overviewFrustum: number
   private isPanning:       boolean = false
   private panLast:         THREE.Vector2 = new THREE.Vector2()
-  private cameraTween:     TWEEN.Tween<{ tx: number; tz: number; f: number }> | null = null
+  private cameraTween:     TweenType<{ tx: number; tz: number; f: number }> | null = null
   private pendingCamera:   { target: THREE.Vector3; frustum: number; durationMs: number } | null = null
   private packetArrivalCallback: ((targetId: string) => void) | null = null
   cameraTarget:   THREE.Vector3
@@ -330,13 +332,13 @@ export class FlowScene extends SceneManager {
     this.cameraTween?.stop()
     const aspect = this.renderer.domElement.clientWidth / this.renderer.domElement.clientHeight || 1
 
-    this.cameraTween = new TWEEN.Tween({
+    this.cameraTween = new Tween({
       tx: this.cameraTarget.x,
       tz: this.cameraTarget.z,
       f:  this.currentFrustum,
-    })
+    }, tweenGroup)
       .to({ tx: target.x, tz: target.z, f: frustum }, durationMs)
-      .easing(TWEEN.Easing.Cubic.InOut)
+      .easing(Easing.Cubic.InOut)
       .onUpdate(({ tx, tz, f }) => {
         this.cameraTarget.set(tx, 0, tz)
         this.currentFrustum = f

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import * as TWEEN from '@tweenjs/tween.js'
+import { Tween, Easing } from '@tweenjs/tween.js'
+import { tweenGroup } from '@/scene/tweenGroup'
 import type { PacketShape, ArrivalStyle } from '@/types/schema'
 import { buildPacketGeometry } from '@/scene/shapeRegistry'
 import { THEME_COLORS } from '@/scene/ThemeColors'
@@ -111,9 +112,9 @@ export class DataPacket {
 
       if (this.arrivalColor !== null) {
         const target = new THREE.Color(this.arrivalColor)
-        new TWEEN.Tween({ r: mat.color.r, g: mat.color.g, b: mat.color.b })
+        new Tween({ r: mat.color.r, g: mat.color.g, b: mat.color.b }, tweenGroup)
           .to({ r: target.r, g: target.g, b: target.b }, 400)
-          .easing(TWEEN.Easing.Quadratic.Out)
+          .easing(Easing.Quadratic.Out)
           .onUpdate(({ r, g, b }) => {
             mat.color.setRGB(r, g, b)
             mat.emissive.setRGB(r * 0.6, g * 0.6, b * 0.6)

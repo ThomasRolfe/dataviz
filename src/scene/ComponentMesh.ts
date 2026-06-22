@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import * as TWEEN from '@tweenjs/tween.js'
+import { Tween, Easing } from '@tweenjs/tween.js'
+import { tweenGroup } from '@/scene/tweenGroup'
 import type { InternalComponent } from '@/types/internal'
 import type { ComponentType } from '@/types/schema'
 import { buildShapeMeshes } from '@/scene/shapeRegistry'
@@ -43,7 +44,7 @@ export class ComponentMesh {
   private iconMat:          THREE.MeshBasicMaterial
   private currentState:     MeshState = 'idle'
   private penetrated:       boolean   = false
-  private penetrationTween: TWEEN.Tween<{ opacity: number }> | null = null
+  private penetrationTween: Tween<{ opacity: number }> | null = null
 
   constructor(scene: THREE.Scene, component: InternalComponent) {
     this.id        = component.id
@@ -100,14 +101,14 @@ export class ComponentMesh {
       const targetOpacity  = STATE_OPACITY[state]
       const targetEmissive = new THREE.Color(STATE_EMISSIVE[state])
 
-      new TWEEN.Tween({
+      new Tween({
         opacity: this.mat.opacity,
         r:       this.mat.emissive.r,
         g:       this.mat.emissive.g,
         b:       this.mat.emissive.b,
-      })
+      }, tweenGroup)
         .to({ opacity: targetOpacity, r: targetEmissive.r, g: targetEmissive.g, b: targetEmissive.b }, durationMs)
-        .easing(TWEEN.Easing.Quadratic.InOut)
+        .easing(Easing.Quadratic.InOut)
         .onUpdate(({ opacity, r, g, b }) => {
           if (!this.penetrated) {
             this.mat.opacity     = opacity
@@ -124,22 +125,21 @@ export class ComponentMesh {
     if (this.penetrated === penetrated) return
     this.penetrated = penetrated
 
-    if (penetrated) {
-      // Disable depth writing so the semi-transparent component doesn't occlude
-      // the packet mesh sitting inside it, and render after the packet.
-      this.mat.depthWrite = false
-      this.group.renderOrder = 1
-    } else {
-      // Restore depth writing and default render order when fully opaque again.
-      this.mat.depthWrite = true
-      this.group.renderOrder = 0
+    // depthWrite: false lets the glowing packet remain visible through the component
+    this.mat.depthWrite = penetrated ? false : true
+
+    // Group.renderOrder doesn't propagate to children — set each child mesh directly
+    for (const child of this.group.children) {
+      if (child instanceof THREE.Mesh && child !== this.hitMesh) {
+        child.renderOrder = penetrated ? 2 : (child.material === this.iconMat ? 1 : 0)
+      }
     }
 
     const targetOpacity = penetrated ? PENETRATED_OPACITY : STATE_OPACITY[this.currentState]
     this.penetrationTween?.stop()
-    this.penetrationTween = new TWEEN.Tween({ opacity: this.mat.opacity })
+    this.penetrationTween = new Tween({ opacity: this.mat.opacity }, tweenGroup)
       .to({ opacity: targetOpacity }, 300)
-      .easing(TWEEN.Easing.Quadratic.InOut)
+      .easing(Easing.Quadratic.InOut)
       .onUpdate(({ opacity }) => {
         this.mat.opacity     = opacity
         this.iconMat.opacity = opacity
