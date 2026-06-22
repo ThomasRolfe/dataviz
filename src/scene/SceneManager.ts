@@ -16,6 +16,7 @@ export class SceneManager {
       canvas,
       antialias: true,
       alpha: false,
+      preserveDrawingBuffer: true,
     })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
@@ -78,6 +79,10 @@ export class SceneManager {
   stopLoop(): void {
     if (this.rafId !== null) cancelAnimationFrame(this.rafId)
     this.rafId = null
+  }
+
+  captureFrame(): string {
+    return this.renderer.domElement.toDataURL('image/png')
   }
 
   protected onFrame(_deltaMs: number): void {}

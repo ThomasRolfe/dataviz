@@ -16,6 +16,7 @@
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@tweenjs/tween.js": "^25.0.0",
     "@types/three": "^0.184.1",
+    "gifenc": "^1.0.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "three": "^0.184.0",
