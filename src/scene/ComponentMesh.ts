@@ -28,10 +28,10 @@ export const STATE_EMISSIVE: Record<MeshState, number> = {
 export const STATE_OPACITY: Record<MeshState, number> = {
   idle:        1.0,
   highlighted: 1.0,
-  dimmed:      0.25,
+  dimmed:      0.45,
 }
 
-const PENETRATED_OPACITY = 0.30
+export const PENETRATED_OPACITY = 0.30
 
 
 export class ComponentMesh {

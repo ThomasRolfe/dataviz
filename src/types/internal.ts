@@ -27,6 +27,8 @@ export interface InternalConnection {
   label?: string
   curve: THREE.Curve<THREE.Vector3>
   tubePoints: THREE.Vector3[]
+  /** t-range [t0, t1] used for the visible TubeGeometry — clipped to component edges */
+  renderTrim: { t0: number; t1: number }
 }
 
 export interface InternalZone {
