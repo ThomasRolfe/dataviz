@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { ComponentType, ComponentShape, Step } from './schema'
+import type { ComponentType, ComponentShape, Step, Connection } from './schema'
 
 export interface InternalComponent {
   id: string
@@ -29,6 +29,10 @@ export interface InternalConnection {
   tubePoints: THREE.Vector3[]
   /** t-range [t0, t1] used for the visible TubeGeometry — clipped to component edges */
   renderTrim: { t0: number; t1: number }
+  /** route definition ('auto' or waypoint array) — used to rebuild geometry after a move */
+  route: Connection['route']
+  /** fan-out offsets applied at the shared start/end attach points */
+  portOffset: { start: THREE.Vector3; end: THREE.Vector3 }
 }
 
 export interface InternalZone {

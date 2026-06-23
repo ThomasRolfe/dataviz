@@ -37,6 +37,7 @@ function App() {
   const [bridge, setBridge] = useState<OverlayBridge | null>(null)
   const [scene, setScene] = useState<FlowScene | null>(null)
   const [theme, setTheme] = useState<Theme>('light')
+  const [editMode, setEditMode] = useState(false)
   const [arrivedTargets, setArrivedTargets] = useState<Set<string>>(new Set())
   const [pipeLabelData, setPipeLabelData] = useState<
     Array<{ id: string; label: string; midpoint: Vector3 }>
@@ -91,6 +92,12 @@ function App() {
     sceneRef.current?.setTheme(next)
   }, [theme])
 
+  const handleEditModeToggle = useCallback(() => {
+    const next = !editMode
+    setEditMode(next)
+    sceneRef.current?.setEditMode(next)
+  }, [editMode])
+
   const handleGoTo = useCallback((index: number) => {
     engineRef.current?.goTo(index)
   }, [])
@@ -116,7 +123,7 @@ function App() {
   }
 
   return (
-    <div className={styles.app}>
+    <div className={`${styles.app}${editMode ? ` ${styles.editing}` : ''}`}>
       <CanvasContainer
         graph={graph}
         onSceneReady={(s, b) => {
@@ -141,8 +148,10 @@ function App() {
           steps={steps}
           currentIndex={stepState.currentIndex}
           theme={theme}
+          editMode={editMode}
           onGoTo={handleGoTo}
           onThemeToggle={handleThemeToggle}
+          onEditModeToggle={handleEditModeToggle}
         />
       )}
 

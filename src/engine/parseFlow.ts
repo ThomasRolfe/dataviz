@@ -21,14 +21,14 @@ function autoRoute(start: THREE.Vector3, end: THREE.Vector3): THREE.CubicBezierC
 }
 
 function bakeRoute(
-  connection: Connection,
+  route: Connection['route'],
   startPt: THREE.Vector3,
   endPt:   THREE.Vector3,
 ): THREE.Curve<THREE.Vector3> {
-  if (connection.route === 'auto') {
+  if (route === 'auto') {
     return autoRoute(startPt, endPt)
   } else {
-    const waypoints = connection.route.map(wp =>
+    const waypoints = route.map(wp =>
       gridToWorld(wp.col, wp.row, 0).setY(PIPE_HEIGHT)
     )
     return new THREE.CatmullRomCurve3([startPt, ...waypoints, endPt])
@@ -93,6 +93,30 @@ function findEndTrim(curve: THREE.Curve<THREE.Vector3>, comp: InternalComponent)
     if (outsideXZ(curve.getPoint(mid), cx, cz, hx, hz)) lo = mid; else hi = mid
   }
   return lo
+}
+
+// ── Shared connection-geometry builder ───────────────────────────────────────
+//
+// Builds the center-to-center packet curve, its sampled points, and the
+// render-trim t-range from the current component centers. Used both for the
+// initial graph build and for rebuilding a pipe after its endpoints move.
+
+export function buildConnectionGeometry(
+  route: Connection['route'],
+  from: InternalComponent,
+  to: InternalComponent,
+  portOffset: { start: THREE.Vector3; end: THREE.Vector3 },
+): { curve: THREE.Curve<THREE.Vector3>; tubePoints: THREE.Vector3[]; renderTrim: { t0: number; t1: number } } {
+  const startPt = from.center.clone().add(portOffset.start).setY(PIPE_HEIGHT)
+  const endPt   = to.center.clone().add(portOffset.end).setY(PIPE_HEIGHT)
+  const curve   = bakeRoute(route, startPt, endPt)
+  const tubePoints = curve.getPoints(64)
+
+  const t0 = findStartTrim(curve, from)
+  const t1 = findEndTrim(curve, to)
+  const renderTrim = { t0, t1: t1 > t0 ? t1 : 1 }
+
+  return { curve, tubePoints, renderTrim }
 }
 
 // ── Port-spreading helpers ────────────────────────────────────────────────────
@@ -221,15 +245,10 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
   for (const conn of def.connections) {
     const from  = components.get(conn.from)!
     const to    = components.get(conn.to)!
-    const po    = portOffsets.get(conn.id)
-    const startPt = from.center.clone().add(po?.start ?? new THREE.Vector3()).setY(PIPE_HEIGHT)
-    const endPt   = to.center.clone().add(po?.end   ?? new THREE.Vector3()).setY(PIPE_HEIGHT)
-    const curve   = bakeRoute(conn, startPt, endPt)
-    const tubePoints = curve.getPoints(64)
-
-    const t0 = findStartTrim(curve, from)
-    const t1 = findEndTrim(curve, to)
-    const renderTrim = { t0, t1: t1 > t0 ? t1 : 1 }
+    const portOffset = portOffsets.get(conn.id)
+      ?? { start: new THREE.Vector3(), end: new THREE.Vector3() }
+    const { curve, tubePoints, renderTrim } =
+      buildConnectionGeometry(conn.route, from, to, portOffset)
 
     const ic: InternalConnection = {
       id:    conn.id,
@@ -239,6 +258,8 @@ export function buildGraph(def: FlowDefinition): InternalGraph {
       curve,
       tubePoints,
       renderTrim,
+      route: conn.route,
+      portOffset,
     }
     connections.set(conn.id, ic)
   }

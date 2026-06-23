@@ -16,7 +16,7 @@ import type { Theme } from '@/scene/ThemeColors'
 import type { PacketMeshUserData } from '@/scene/meshUserData'
 import type { InternalGraph } from '@/types/internal'
 import type { Step } from '@/types/schema'
-import { CELL_SIZE } from '@/engine/layoutEngine'
+import { CELL_SIZE, COMPONENT_GAP, worldToGrid } from '@/engine/layoutEngine'
 
 const PACKET_TRAVEL_MS     = 2000
 const CAMERA_HEIGHT        = 50
@@ -26,6 +26,8 @@ const WHEEL_ZOOM_OUT       = 1.12
 const FRUSTUM_MIN_RATIO    = 0.25
 const FRUSTUM_MAX_RATIO    = 2.5
 const PIPE_DIM_DELAY_MS    = 600
+const DRAG_THRESHOLD_PX    = 4    // movement before a press becomes a drag
+const DRAG_LIFT            = 0.6  // world-units a component rises while being dragged
 
 export class FlowScene extends SceneManager {
   private graph:          InternalGraph
@@ -47,6 +49,16 @@ export class FlowScene extends SceneManager {
   private isPanning:       boolean = false
   private panLast:         THREE.Vector2 = new THREE.Vector2()
   private packetArrivalCallback: ((targetId: string) => void) | null = null
+  // ── Edit-mode drag state ──
+  private editMode:        boolean = false
+  private dragId:          string | null = null
+  private dragGroup:       THREE.Group | null = null
+  private dragPointerId:   number | null = null
+  private dragOffset:      THREE.Vector2 = new THREE.Vector2()  // (groupX-groundX, groupZ-groundZ) at grab
+  private dragStartClient: THREE.Vector2 = new THREE.Vector2()  // pointer-down position, for threshold
+  private dragOriginY:     number = 0
+  private dragMoved:       boolean = false
+  private dragRay:         THREE.Raycaster = new THREE.Raycaster()
   cameraTarget:   THREE.Vector3
   currentFrustum: number
   overlayBridge:  OverlayBridge
@@ -143,12 +155,46 @@ export class FlowScene extends SceneManager {
 
   private onPointerDown = (e: PointerEvent): void => {
     if (e.button !== 0) return
+
+    // Edit mode: grab a component if the press lands on one. Empty space still pans.
+    if (this.editMode) {
+      const id = this.pickComponent(e.clientX, e.clientY)
+      if (id) {
+        const cm = this.components.get(id)!
+        this.dragId        = id
+        this.dragGroup     = cm.group
+        this.dragPointerId = e.pointerId
+        this.dragOriginY   = cm.group.position.y
+        this.dragMoved     = false
+        this.dragStartClient.set(e.clientX, e.clientY)
+        const ground = this.pointerToGround(e.clientX, e.clientY)
+        this.dragOffset.set(cm.group.position.x - ground.x, cm.group.position.z - ground.z)
+        this.renderer.domElement.setPointerCapture(e.pointerId)
+        this.renderer.domElement.style.cursor = 'grabbing'
+        return
+      }
+    }
+
     this.isPanning = true
     this.panLast.set(e.clientX, e.clientY)
     this.renderer.domElement.style.cursor = 'grabbing'
   }
 
   private onPointerMove = (e: PointerEvent): void => {
+    // Edit-mode drag takes priority over panning
+    if (this.dragId && this.dragGroup) {
+      if (!this.dragMoved) {
+        const dist = Math.hypot(e.clientX - this.dragStartClient.x, e.clientY - this.dragStartClient.y)
+        if (dist < DRAG_THRESHOLD_PX) return  // sub-threshold: treat as a click, don't move yet
+        this.dragMoved = true
+        this.dragGroup.position.y = this.dragOriginY + DRAG_LIFT  // lift on first real movement
+      }
+      const ground = this.pointerToGround(e.clientX, e.clientY)
+      this.dragGroup.position.x = ground.x + this.dragOffset.x
+      this.dragGroup.position.z = ground.z + this.dragOffset.y
+      return
+    }
+
     if (!this.isPanning) return
     const dx = e.clientX - this.panLast.x
     const dy = e.clientY - this.panLast.y
@@ -176,12 +222,99 @@ export class FlowScene extends SceneManager {
   }
 
   private onPointerUp = (): void => {
+    if (this.dragId) {
+      this.endDrag()
+      return
+    }
     this.isPanning = false
-    this.renderer.domElement.style.cursor = 'grab'
+    this.renderer.domElement.style.cursor = this.editMode ? 'move' : 'grab'
   }
 
   private onContextMenu = (e: Event): void => {
     e.preventDefault()
+  }
+
+  // ── Edit-mode drag helpers ────────────────────────────────────────────────
+
+  setEditMode(enabled: boolean): void {
+    this.editMode = enabled
+    // Leaving edit mode mid-drag commits the in-progress move rather than orphaning state.
+    if (!enabled && this.dragId) this.endDrag()
+    this.renderer.domElement.style.cursor = enabled ? 'move' : 'grab'
+  }
+
+  private clientToNdc(clientX: number, clientY: number): THREE.Vector2 {
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    return new THREE.Vector2(
+      ((clientX - rect.left) / rect.width)  * 2 - 1,
+      -((clientY - rect.top)  / rect.height) * 2 + 1,
+    )
+  }
+
+  /** Raycast the component hit meshes; returns the topmost component id or null. */
+  private pickComponent(clientX: number, clientY: number): string | null {
+    this.dragRay.setFromCamera(this.clientToNdc(clientX, clientY), this.camera)
+    const meshes: THREE.Object3D[] = []
+    for (const cm of this.components.values()) meshes.push(cm.hitMesh)
+    const hits = this.dragRay.intersectObjects(meshes, false)
+    return hits.length ? (hits[0].object.userData.componentId as string) : null
+  }
+
+  /** Project a screen pointer onto the y=0 ground plane. Camera always looks
+   *  down at an angle, so ray.direction.y is non-zero and the solve is stable. */
+  private pointerToGround(clientX: number, clientY: number): THREE.Vector3 {
+    this.dragRay.setFromCamera(this.clientToNdc(clientX, clientY), this.camera)
+    const ray = this.dragRay.ray
+    const t   = -ray.origin.y / ray.direction.y
+    return ray.origin.clone().add(ray.direction.clone().multiplyScalar(t))
+  }
+
+  private endDrag(): void {
+    const id    = this.dragId
+    const group = this.dragGroup
+    if (id && group && this.dragMoved) {
+      const cm = this.components.get(id)!
+      const ic = this.graph.components.get(id)!
+
+      // Footprint in grid cells (meshSize = cells * CELL_SIZE * COMPONENT_GAP)
+      const w = ic.meshSize.x / (CELL_SIZE * COMPONENT_GAP)
+      const h = ic.meshSize.z / (CELL_SIZE * COMPONENT_GAP)
+
+      // Snap the origin corner to the nearest grid cell, then clamp inside the grid
+      const cols = this.graph.gridBounds.maxX / CELL_SIZE
+      const rows = this.graph.gridBounds.maxZ / CELL_SIZE
+      const raw  = worldToGrid(group.position.x - (w / 2) * CELL_SIZE, group.position.z - (h / 2) * CELL_SIZE)
+      const col  = Math.min(Math.max(raw.col, 0), Math.max(0, Math.round(cols - w)))
+      const row  = Math.min(Math.max(raw.row, 0), Math.max(0, Math.round(rows - h)))
+      const cx   = (col + w / 2) * CELL_SIZE
+      const cz   = (row + h / 2) * CELL_SIZE
+
+      // Commit the new position to the model and the mesh
+      ic.center.set(cx, 0, cz)
+      ic.topCenter.set(cx, ic.meshSize.y, cz)
+      cm.topCenter.set(cx, ic.meshSize.y, cz)
+      group.position.set(cx, this.dragOriginY, cz)
+
+      // Rebuild every pipe attached to the moved component (reads the new centers)
+      for (const [connId, conn] of this.graph.connections) {
+        if (conn.from.id === id || conn.to.id === id) this.pipes.get(connId)?.update()
+      }
+    } else if (group) {
+      // Sub-threshold press: ensure any lift is undone (shouldn't be lifted, but be safe)
+      group.position.y = this.dragOriginY
+    }
+    this.clearDrag()
+  }
+
+  private clearDrag(): void {
+    if (this.dragPointerId !== null) {
+      try { this.renderer.domElement.releasePointerCapture(this.dragPointerId) } catch { /* already released */ }
+    }
+    this.dragId        = null
+    this.dragGroup     = null
+    this.dragPointerId = null
+    this.dragMoved     = false
+    this.renderer.domElement.style.cursor = this.editMode ? 'move' : 'grab'
   }
 
   setHoverCallback(fn: (id: string | null) => void): void {

@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Tween, Easing } from '@tweenjs/tween.js'
 import { tweenGroup } from '@/scene/tweenGroup'
 import type { InternalConnection } from '@/types/internal'
+import { buildConnectionGeometry } from '@/engine/parseFlow'
 import { THEME_COLORS } from '@/scene/ThemeColors'
 import type { Theme } from '@/scene/ThemeColors'
 
@@ -35,6 +36,7 @@ export class ConnectionPipe {
   id:       string
   midpoint: THREE.Vector3
 
+  private conn:              InternalConnection
   private idleColor:         number
   private activeColor:       number
   private activeEmissive:    number
@@ -42,6 +44,7 @@ export class ConnectionPipe {
   private packetTraversing:  boolean = false
 
   constructor(scene: THREE.Scene, connection: InternalConnection) {
+    this.conn  = connection
     this.id    = connection.id
     this.curve = connection.curve
 
@@ -74,6 +77,24 @@ export class ConnectionPipe {
     scene.add(this.mesh)
 
     this.midpoint = connection.curve.getPointAt(0.5)
+  }
+
+  /** Rebuild tube geometry after either endpoint component has moved. Reads the
+   *  current from/to centers via the stored connection. */
+  update(): void {
+    const { curve, tubePoints, renderTrim } =
+      buildConnectionGeometry(this.conn.route, this.conn.from, this.conn.to, this.conn.portOffset)
+    // write back so packet travel (which uses conn.curve) stays correct
+    this.conn.curve      = curve
+    this.conn.tubePoints = tubePoints
+    this.conn.renderTrim = renderTrim
+    this.curve    = curve
+    this.midpoint = curve.getPointAt(0.5)
+    const { t0, t1 } = renderTrim
+    const renderCurve = new TrimmedCurve(curve, t0, t1)
+    const oldGeo = this.mesh.geometry
+    this.mesh.geometry = new THREE.TubeGeometry(renderCurve, TUBE_SEGMENTS, TUBE_RADIUS, TUBE_RADIUS_SEGS, false)
+    oldGeo.dispose()
   }
 
   setTheme(theme: Theme): void {

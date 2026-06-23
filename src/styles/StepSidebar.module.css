@@ -47,6 +47,34 @@
   color: var(--text-primary);
 }
 
+.editBtn {
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.editBtn:hover {
+  background: var(--btn-hover);
+  color: var(--text-primary);
+}
+
+.editBtnActive {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+.editBtnActive:hover {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
 .list {
   flex: 1;
   overflow-y: auto;

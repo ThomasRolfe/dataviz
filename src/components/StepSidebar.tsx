@@ -7,11 +7,13 @@ interface Props {
   steps: Step[]
   currentIndex: number
   theme: Theme
+  editMode: boolean
   onGoTo: (index: number) => void
   onThemeToggle: () => void
+  onEditModeToggle: () => void
 }
 
-export function StepSidebar({ steps, currentIndex, theme, onGoTo, onThemeToggle }: Props) {
+export function StepSidebar({ steps, currentIndex, theme, editMode, onGoTo, onThemeToggle, onEditModeToggle }: Props) {
   const activeRef = useRef<HTMLDivElement | null>(null)
 
   // Keep the active step visible when it changes programmatically
@@ -23,6 +25,12 @@ export function StepSidebar({ steps, currentIndex, theme, onGoTo, onThemeToggle 
     <nav className={styles.sidebar}>
       <div className={styles.header}>
         <span className={styles.headerLabel}>Steps</span>
+        <button
+          className={`${styles.editBtn}${editMode ? ` ${styles.editBtnActive}` : ''}`}
+          onClick={onEditModeToggle}
+        >
+          {editMode ? 'Done' : 'Edit layout'}
+        </button>
         <button className={styles.themeBtn} onClick={onThemeToggle}>
           {theme === 'dark' ? 'Light' : 'Dark'}
         </button>
