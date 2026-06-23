@@ -17,6 +17,8 @@ import type { PacketMeshUserData } from '@/scene/meshUserData'
 import type { InternalGraph } from '@/types/internal'
 import type { Step } from '@/types/schema'
 import { CELL_SIZE, COMPONENT_GAP, worldToGrid } from '@/engine/layoutEngine'
+import { Tween } from '@tweenjs/tween.js'
+import { tweenGroup } from '@/scene/tweenGroup'
 
 const PACKET_TRAVEL_MS     = 2000
 const CAMERA_HEIGHT        = 50
@@ -59,6 +61,9 @@ export class FlowScene extends SceneManager {
   private dragOriginY:     number = 0
   private dragMoved:       boolean = false
   private dragRay:         THREE.Raycaster = new THREE.Raycaster()
+  private dragGhost:       THREE.Mesh | null = null
+  private dragW:           number = 0
+  private dragH:           number = 0
   cameraTarget:   THREE.Vector3
   currentFrustum: number
   overlayBridge:  OverlayBridge
@@ -161,6 +166,9 @@ export class FlowScene extends SceneManager {
       const id = this.pickComponent(e.clientX, e.clientY)
       if (id) {
         const cm = this.components.get(id)!
+        const icForDrag = this.graph.components.get(id)!
+        this.dragW         = icForDrag.meshSize.x / (CELL_SIZE * COMPONENT_GAP)
+        this.dragH         = icForDrag.meshSize.z / (CELL_SIZE * COMPONENT_GAP)
         this.dragId        = id
         this.dragGroup     = cm.group
         this.dragPointerId = e.pointerId
@@ -192,6 +200,29 @@ export class FlowScene extends SceneManager {
       const ground = this.pointerToGround(e.clientX, e.clientY)
       this.dragGroup.position.x = ground.x + this.dragOffset.x
       this.dragGroup.position.z = ground.z + this.dragOffset.y
+
+      // Sync InternalComponent center with live mesh position for pipe rebuild
+      const id = this.dragId!
+      const ic = this.graph.components.get(id)!
+      const gx = this.dragGroup.position.x
+      const gz = this.dragGroup.position.z
+      ic.center.set(gx, 0, gz)
+      ic.topCenter.set(gx, ic.meshSize.y, gz)
+
+      // Live-rebuild all pipes connected to the dragged component
+      for (const [connId, conn] of this.graph.connections) {
+        if (conn.from.id === id || conn.to.id === id) this.pipes.get(connId)?.update()
+      }
+
+      // Show/update ghost box at the snapped target position
+      if (!this.dragGhost) {
+        const geo = new THREE.BoxGeometry(ic.meshSize.x, 0.05, ic.meshSize.z)
+        const mat = new THREE.MeshBasicMaterial({ color: 0x4488ff, wireframe: true, transparent: true, opacity: 0.8 })
+        this.dragGhost = new THREE.Mesh(geo, mat)
+        this.scene.add(this.dragGhost)
+      }
+      const { cx: snapX, cz: snapZ } = this.computeSnap(gx, gz, this.dragW, this.dragH)
+      this.dragGhost.position.set(snapX, 0.05, snapZ)
       return
     }
 
@@ -269,6 +300,16 @@ export class FlowScene extends SceneManager {
     return ray.origin.clone().add(ray.direction.clone().multiplyScalar(t))
   }
 
+  /** Compute the snapped grid position from a raw center (world coords). */
+  private computeSnap(centerX: number, centerZ: number, w: number, h: number): { col: number; row: number; cx: number; cz: number } {
+    const cols = this.graph.gridBounds.maxX / CELL_SIZE
+    const rows = this.graph.gridBounds.maxZ / CELL_SIZE
+    const raw  = worldToGrid(centerX - (w / 2) * CELL_SIZE, centerZ - (h / 2) * CELL_SIZE)
+    const col  = Math.min(Math.max(raw.col, 0), Math.max(0, Math.round(cols - w)))
+    const row  = Math.min(Math.max(raw.row, 0), Math.max(0, Math.round(rows - h)))
+    return { col, row, cx: (col + w / 2) * CELL_SIZE, cz: (row + h / 2) * CELL_SIZE }
+  }
+
   private endDrag(): void {
     const id    = this.dragId
     const group = this.dragGroup
@@ -276,31 +317,27 @@ export class FlowScene extends SceneManager {
       const cm = this.components.get(id)!
       const ic = this.graph.components.get(id)!
 
-      // Footprint in grid cells (meshSize = cells * CELL_SIZE * COMPONENT_GAP)
-      const w = ic.meshSize.x / (CELL_SIZE * COMPONENT_GAP)
-      const h = ic.meshSize.z / (CELL_SIZE * COMPONENT_GAP)
+      // Snap to nearest grid cell
+      const { cx, cz } = this.computeSnap(group.position.x, group.position.z, this.dragW, this.dragH)
 
-      // Snap the origin corner to the nearest grid cell, then clamp inside the grid
-      const cols = this.graph.gridBounds.maxX / CELL_SIZE
-      const rows = this.graph.gridBounds.maxZ / CELL_SIZE
-      const raw  = worldToGrid(group.position.x - (w / 2) * CELL_SIZE, group.position.z - (h / 2) * CELL_SIZE)
-      const col  = Math.min(Math.max(raw.col, 0), Math.max(0, Math.round(cols - w)))
-      const row  = Math.min(Math.max(raw.row, 0), Math.max(0, Math.round(rows - h)))
-      const cx   = (col + w / 2) * CELL_SIZE
-      const cz   = (row + h / 2) * CELL_SIZE
-
-      // Commit the new position to the model and the mesh
+      // Commit snapped position to model and mesh
       ic.center.set(cx, 0, cz)
       ic.topCenter.set(cx, ic.meshSize.y, cz)
       cm.topCenter.set(cx, ic.meshSize.y, cz)
       group.position.set(cx, this.dragOriginY, cz)
 
-      // Rebuild every pipe attached to the moved component (reads the new centers)
+      // Final pipe rebuild at snapped position
       for (const [connId, conn] of this.graph.connections) {
         if (conn.from.id === id || conn.to.id === id) this.pipes.get(connId)?.update()
       }
+
+      // Brief scale-bounce to signal the snap commit
+      new Tween({ t: 0 }, tweenGroup)
+        .to({ t: 1 }, 300)
+        .onUpdate(({ t }) => { group.scale.setScalar(1 + Math.sin(t * Math.PI) * 0.1) })
+        .onComplete(() => { group.scale.setScalar(1.0) })
+        .start()
     } else if (group) {
-      // Sub-threshold press: ensure any lift is undone (shouldn't be lifted, but be safe)
       group.position.y = this.dragOriginY
     }
     this.clearDrag()
@@ -309,6 +346,12 @@ export class FlowScene extends SceneManager {
   private clearDrag(): void {
     if (this.dragPointerId !== null) {
       try { this.renderer.domElement.releasePointerCapture(this.dragPointerId) } catch { /* already released */ }
+    }
+    if (this.dragGhost) {
+      this.scene.remove(this.dragGhost)
+      this.dragGhost.geometry.dispose()
+      ;(this.dragGhost.material as THREE.Material).dispose()
+      this.dragGhost = null
     }
     this.dragId        = null
     this.dragGroup     = null

@@ -10,6 +10,7 @@ import { PacketTooltip } from '@/components/PacketTooltip'
 import { StepSidebar } from '@/components/StepSidebar'
 import { ExportButton } from '@/components/ExportButton'
 import { buildGraph } from '@/engine/parseFlow'
+import { graphToFlowDefinition } from '@/utils/flowSerializer'
 import { StepEngine } from '@/engine/stepEngine'
 import { useStepEngine } from '@/hooks/useStepEngine'
 import { useHover } from '@/hooks/useHover'
@@ -31,6 +32,7 @@ async function loadFlow(name: string): Promise<FlowDefinition> {
 
 function App() {
   const [graph, setGraph] = useState<InternalGraph | null>(null)
+  const [flowDef, setFlowDef] = useState<FlowDefinition | null>(null)
   const [engine, setEngine] = useState<StepEngine | null>(null)
   const [steps, setSteps] = useState<Step[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +55,7 @@ function App() {
       .then((def) => {
         const g = buildGraph(def)
         setGraph(g)
+        setFlowDef(def)
         const eng = new StepEngine(def.steps)
         engineRef.current = eng
         setEngine(eng)
@@ -97,6 +100,14 @@ function App() {
     setEditMode(next)
     sceneRef.current?.setEditMode(next)
   }, [editMode])
+
+  const handleCopyJson = useCallback(() => {
+    if (!graph || !flowDef) return
+    const updated = graphToFlowDefinition(graph, flowDef)
+    navigator.clipboard.writeText(JSON.stringify(updated, null, 2)).catch(() => {
+      /* clipboard access denied — silently ignore */
+    })
+  }, [graph, flowDef])
 
   const handleGoTo = useCallback((index: number) => {
     engineRef.current?.goTo(index)
@@ -152,6 +163,7 @@ function App() {
           onGoTo={handleGoTo}
           onThemeToggle={handleThemeToggle}
           onEditModeToggle={handleEditModeToggle}
+          onCopyJson={handleCopyJson}
         />
       )}
 
