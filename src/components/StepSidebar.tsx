@@ -7,11 +7,14 @@ interface Props {
   steps: Step[]
   currentIndex: number
   theme: Theme
+  editMode: boolean
   onGoTo: (index: number) => void
   onThemeToggle: () => void
+  onEditModeToggle: () => void
+  onCopyJson?: () => void
 }
 
-export function StepSidebar({ steps, currentIndex, theme, onGoTo, onThemeToggle }: Props) {
+export function StepSidebar({ steps, currentIndex, theme, editMode, onGoTo, onThemeToggle, onEditModeToggle, onCopyJson }: Props) {
   const activeRef = useRef<HTMLDivElement | null>(null)
 
   // Keep the active step visible when it changes programmatically
@@ -23,6 +26,12 @@ export function StepSidebar({ steps, currentIndex, theme, onGoTo, onThemeToggle 
     <nav className={styles.sidebar}>
       <div className={styles.header}>
         <span className={styles.headerLabel}>Steps</span>
+        <button
+          className={`${styles.editBtn}${editMode ? ` ${styles.editBtnActive}` : ''}`}
+          onClick={onEditModeToggle}
+        >
+          {editMode ? 'Done' : 'Edit layout'}
+        </button>
         <button className={styles.themeBtn} onClick={onThemeToggle}>
           {theme === 'dark' ? 'Light' : 'Dark'}
         </button>
@@ -41,6 +50,18 @@ export function StepSidebar({ steps, currentIndex, theme, onGoTo, onThemeToggle 
           </div>
         ))}
       </div>
+
+      {editMode && (
+        <div className={styles.editFooter}>
+          <button
+            className={styles.copyJsonBtn}
+            onClick={onCopyJson}
+            title="Copy current layout as flow JSON to clipboard"
+          >
+            Copy JSON
+          </button>
+        </div>
+      )}
     </nav>
   )
 }

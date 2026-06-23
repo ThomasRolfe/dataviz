@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   gridToWorld,
+  worldToGrid,
   componentCenter,
   componentMeshSize,
   CELL_SIZE,
@@ -44,6 +45,44 @@ describe('gridToWorld()', () => {
 
   it('defaults elevation to 0', () => {
     expect(gridToWorld(1, 1).y).toBe(0)
+  })
+})
+
+// ── worldToGrid() ────────────────────────────────────────────────────────────
+
+describe('worldToGrid()', () => {
+  it('is the exact inverse of gridToWorld for integer grid coords', () => {
+    const pairs: Array<[number, number]> = [
+      [0, 0],
+      [1, 2],
+      [3, 5],
+      [7, 0],
+      [0, 9],
+      [4, 4],
+    ]
+    for (const [col, row] of pairs) {
+      const v = gridToWorld(col, row)
+      expect(worldToGrid(v.x, v.z)).toEqual({ col, row })
+    }
+  })
+
+  it('rounds to the nearest cell', () => {
+    expect(worldToGrid(2 * CELL_SIZE + 0.4, 0).col).toBe(2)
+    // halfway rounds up
+    expect(worldToGrid(2 * CELL_SIZE + CELL_SIZE / 2, 0).col).toBe(3)
+    // just under halfway rounds down
+    expect(worldToGrid(2 * CELL_SIZE + CELL_SIZE / 2 - 0.01, 0).col).toBe(2)
+    expect(worldToGrid(0, 3 * CELL_SIZE + 0.4).row).toBe(3)
+  })
+
+  it('rounds negative coordinates correctly', () => {
+    expect(worldToGrid(-CELL_SIZE, 0).col).toBe(-1)
+    expect(worldToGrid(0, -2 * CELL_SIZE).row).toBe(-2)
+    expect(worldToGrid(-CELL_SIZE - 0.4, 0).col).toBe(-1)
+  })
+
+  it('maps the origin to { col: 0, row: 0 }', () => {
+    expect(worldToGrid(0, 0)).toEqual({ col: 0, row: 0 })
   })
 })
 

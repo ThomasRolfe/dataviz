@@ -22,6 +22,13 @@ export function gridToWorld(col: number, row: number, elevation = 0): THREE.Vect
   )
 }
 
+export function worldToGrid(x: number, z: number): { col: number; row: number } {
+  return {
+    col: Math.round(x / CELL_SIZE),
+    row: Math.round(z / CELL_SIZE),
+  }
+}
+
 export function componentCenter(c: Component): THREE.Vector3 {
   const { col, row, elevation = 0 } = c.position
   const { w = 1, h = 1 } = c.size ?? {}

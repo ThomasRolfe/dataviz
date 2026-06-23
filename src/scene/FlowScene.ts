@@ -16,7 +16,9 @@ import type { Theme } from '@/scene/ThemeColors'
 import type { PacketMeshUserData } from '@/scene/meshUserData'
 import type { InternalGraph } from '@/types/internal'
 import type { Step } from '@/types/schema'
-import { CELL_SIZE } from '@/engine/layoutEngine'
+import { CELL_SIZE, COMPONENT_GAP, worldToGrid } from '@/engine/layoutEngine'
+import { Tween } from '@tweenjs/tween.js'
+import { tweenGroup } from '@/scene/tweenGroup'
 
 const PACKET_TRAVEL_MS     = 2000
 const CAMERA_HEIGHT        = 50
@@ -26,6 +28,8 @@ const WHEEL_ZOOM_OUT       = 1.12
 const FRUSTUM_MIN_RATIO    = 0.25
 const FRUSTUM_MAX_RATIO    = 2.5
 const PIPE_DIM_DELAY_MS    = 600
+const DRAG_THRESHOLD_PX    = 4    // movement before a press becomes a drag
+const DRAG_LIFT            = 0.6  // world-units a component rises while being dragged
 
 export class FlowScene extends SceneManager {
   private graph:          InternalGraph
@@ -47,6 +51,19 @@ export class FlowScene extends SceneManager {
   private isPanning:       boolean = false
   private panLast:         THREE.Vector2 = new THREE.Vector2()
   private packetArrivalCallback: ((targetId: string) => void) | null = null
+  // ── Edit-mode drag state ──
+  private editMode:        boolean = false
+  private dragId:          string | null = null
+  private dragGroup:       THREE.Group | null = null
+  private dragPointerId:   number | null = null
+  private dragOffset:      THREE.Vector2 = new THREE.Vector2()  // (groupX-groundX, groupZ-groundZ) at grab
+  private dragStartClient: THREE.Vector2 = new THREE.Vector2()  // pointer-down position, for threshold
+  private dragOriginY:     number = 0
+  private dragMoved:       boolean = false
+  private dragRay:         THREE.Raycaster = new THREE.Raycaster()
+  private dragGhost:       THREE.Mesh | null = null
+  private dragW:           number = 0
+  private dragH:           number = 0
   cameraTarget:   THREE.Vector3
   currentFrustum: number
   overlayBridge:  OverlayBridge
@@ -143,12 +160,72 @@ export class FlowScene extends SceneManager {
 
   private onPointerDown = (e: PointerEvent): void => {
     if (e.button !== 0) return
+
+    // Edit mode: grab a component if the press lands on one. Empty space still pans.
+    if (this.editMode) {
+      const id = this.pickComponent(e.clientX, e.clientY)
+      if (id) {
+        const cm = this.components.get(id)!
+        const icForDrag = this.graph.components.get(id)!
+        this.dragW         = icForDrag.meshSize.x / (CELL_SIZE * COMPONENT_GAP)
+        this.dragH         = icForDrag.meshSize.z / (CELL_SIZE * COMPONENT_GAP)
+        this.dragId        = id
+        this.dragGroup     = cm.group
+        this.dragPointerId = e.pointerId
+        this.dragOriginY   = cm.group.position.y
+        this.dragMoved     = false
+        this.dragStartClient.set(e.clientX, e.clientY)
+        const ground = this.pointerToGround(e.clientX, e.clientY)
+        this.dragOffset.set(cm.group.position.x - ground.x, cm.group.position.z - ground.z)
+        this.renderer.domElement.setPointerCapture(e.pointerId)
+        this.renderer.domElement.style.cursor = 'grabbing'
+        return
+      }
+    }
+
     this.isPanning = true
     this.panLast.set(e.clientX, e.clientY)
     this.renderer.domElement.style.cursor = 'grabbing'
   }
 
   private onPointerMove = (e: PointerEvent): void => {
+    // Edit-mode drag takes priority over panning
+    if (this.dragId && this.dragGroup) {
+      if (!this.dragMoved) {
+        const dist = Math.hypot(e.clientX - this.dragStartClient.x, e.clientY - this.dragStartClient.y)
+        if (dist < DRAG_THRESHOLD_PX) return  // sub-threshold: treat as a click, don't move yet
+        this.dragMoved = true
+        this.dragGroup.position.y = this.dragOriginY + DRAG_LIFT  // lift on first real movement
+      }
+      const ground = this.pointerToGround(e.clientX, e.clientY)
+      this.dragGroup.position.x = ground.x + this.dragOffset.x
+      this.dragGroup.position.z = ground.z + this.dragOffset.y
+
+      // Sync InternalComponent center with live mesh position for pipe rebuild
+      const id = this.dragId!
+      const ic = this.graph.components.get(id)!
+      const gx = this.dragGroup.position.x
+      const gz = this.dragGroup.position.z
+      ic.center.set(gx, 0, gz)
+      ic.topCenter.set(gx, ic.meshSize.y, gz)
+
+      // Live-rebuild all pipes connected to the dragged component
+      for (const [connId, conn] of this.graph.connections) {
+        if (conn.from.id === id || conn.to.id === id) this.pipes.get(connId)?.update()
+      }
+
+      // Show/update ghost box at the snapped target position
+      if (!this.dragGhost) {
+        const geo = new THREE.BoxGeometry(ic.meshSize.x, 0.05, ic.meshSize.z)
+        const mat = new THREE.MeshBasicMaterial({ color: 0x4488ff, wireframe: true, transparent: true, opacity: 0.8 })
+        this.dragGhost = new THREE.Mesh(geo, mat)
+        this.scene.add(this.dragGhost)
+      }
+      const { cx: snapX, cz: snapZ } = this.computeSnap(gx, gz, this.dragW, this.dragH)
+      this.dragGhost.position.set(snapX, 0.05, snapZ)
+      return
+    }
+
     if (!this.isPanning) return
     const dx = e.clientX - this.panLast.x
     const dy = e.clientY - this.panLast.y
@@ -176,12 +253,111 @@ export class FlowScene extends SceneManager {
   }
 
   private onPointerUp = (): void => {
+    if (this.dragId) {
+      this.endDrag()
+      return
+    }
     this.isPanning = false
-    this.renderer.domElement.style.cursor = 'grab'
+    this.renderer.domElement.style.cursor = this.editMode ? 'move' : 'grab'
   }
 
   private onContextMenu = (e: Event): void => {
     e.preventDefault()
+  }
+
+  // ── Edit-mode drag helpers ────────────────────────────────────────────────
+
+  setEditMode(enabled: boolean): void {
+    this.editMode = enabled
+    // Leaving edit mode mid-drag commits the in-progress move rather than orphaning state.
+    if (!enabled && this.dragId) this.endDrag()
+    this.renderer.domElement.style.cursor = enabled ? 'move' : 'grab'
+  }
+
+  private clientToNdc(clientX: number, clientY: number): THREE.Vector2 {
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    return new THREE.Vector2(
+      ((clientX - rect.left) / rect.width)  * 2 - 1,
+      -((clientY - rect.top)  / rect.height) * 2 + 1,
+    )
+  }
+
+  /** Raycast the component hit meshes; returns the topmost component id or null. */
+  private pickComponent(clientX: number, clientY: number): string | null {
+    this.dragRay.setFromCamera(this.clientToNdc(clientX, clientY), this.camera)
+    const meshes: THREE.Object3D[] = []
+    for (const cm of this.components.values()) meshes.push(cm.hitMesh)
+    const hits = this.dragRay.intersectObjects(meshes, false)
+    return hits.length ? (hits[0].object.userData.componentId as string) : null
+  }
+
+  /** Project a screen pointer onto the y=0 ground plane. Camera always looks
+   *  down at an angle, so ray.direction.y is non-zero and the solve is stable. */
+  private pointerToGround(clientX: number, clientY: number): THREE.Vector3 {
+    this.dragRay.setFromCamera(this.clientToNdc(clientX, clientY), this.camera)
+    const ray = this.dragRay.ray
+    const t   = -ray.origin.y / ray.direction.y
+    return ray.origin.clone().add(ray.direction.clone().multiplyScalar(t))
+  }
+
+  /** Compute the snapped grid position from a raw center (world coords). */
+  private computeSnap(centerX: number, centerZ: number, w: number, h: number): { col: number; row: number; cx: number; cz: number } {
+    const cols = this.graph.gridBounds.maxX / CELL_SIZE
+    const rows = this.graph.gridBounds.maxZ / CELL_SIZE
+    const raw  = worldToGrid(centerX - (w / 2) * CELL_SIZE, centerZ - (h / 2) * CELL_SIZE)
+    const col  = Math.min(Math.max(raw.col, 0), Math.max(0, Math.round(cols - w)))
+    const row  = Math.min(Math.max(raw.row, 0), Math.max(0, Math.round(rows - h)))
+    return { col, row, cx: (col + w / 2) * CELL_SIZE, cz: (row + h / 2) * CELL_SIZE }
+  }
+
+  private endDrag(): void {
+    const id    = this.dragId
+    const group = this.dragGroup
+    if (id && group && this.dragMoved) {
+      const cm = this.components.get(id)!
+      const ic = this.graph.components.get(id)!
+
+      // Snap to nearest grid cell
+      const { cx, cz } = this.computeSnap(group.position.x, group.position.z, this.dragW, this.dragH)
+
+      // Commit snapped position to model and mesh
+      ic.center.set(cx, 0, cz)
+      ic.topCenter.set(cx, ic.meshSize.y, cz)
+      cm.topCenter.set(cx, ic.meshSize.y, cz)
+      group.position.set(cx, this.dragOriginY, cz)
+
+      // Final pipe rebuild at snapped position
+      for (const [connId, conn] of this.graph.connections) {
+        if (conn.from.id === id || conn.to.id === id) this.pipes.get(connId)?.update()
+      }
+
+      // Brief scale-bounce to signal the snap commit
+      new Tween({ t: 0 }, tweenGroup)
+        .to({ t: 1 }, 300)
+        .onUpdate(({ t }) => { group.scale.setScalar(1 + Math.sin(t * Math.PI) * 0.1) })
+        .onComplete(() => { group.scale.setScalar(1.0) })
+        .start()
+    } else if (group) {
+      group.position.y = this.dragOriginY
+    }
+    this.clearDrag()
+  }
+
+  private clearDrag(): void {
+    if (this.dragPointerId !== null) {
+      try { this.renderer.domElement.releasePointerCapture(this.dragPointerId) } catch { /* already released */ }
+    }
+    if (this.dragGhost) {
+      this.scene.remove(this.dragGhost)
+      this.dragGhost.geometry.dispose()
+      ;(this.dragGhost.material as THREE.Material).dispose()
+      this.dragGhost = null
+    }
+    this.dragId        = null
+    this.dragGroup     = null
+    this.dragPointerId = null
+    this.dragMoved     = false
+    this.renderer.domElement.style.cursor = this.editMode ? 'move' : 'grab'
   }
 
   setHoverCallback(fn: (id: string | null) => void): void {
