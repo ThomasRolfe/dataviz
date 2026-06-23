@@ -75,27 +75,38 @@ export class ZoneRenderer {
     const fontPx = 22 * DPR
     const padX   = 14 * DPR
     const padY   = 8  * DPR
+    const font      = `700 ${fontPx}px system-ui, -apple-system, sans-serif`
     const hexColor  = '#' + zone.color.getHexString()
     const labelText = zone.label.toUpperCase()
 
-    const canvas = document.createElement('canvas')
-    const ctx    = canvas.getContext('2d')!
+    // Measure on a throwaway canvas so the real canvas is sized before its
+    // context is obtained — setting canvas.width/height resets context state,
+    // which can leave drawing properties in an indeterminate state when ctx
+    // was obtained on an unsized canvas.
+    const tmp    = document.createElement('canvas')
+    const tmpCtx = tmp.getContext('2d')!
+    tmpCtx.font  = font
+    const textW  = tmpCtx.measureText(labelText).width
 
-    ctx.font = `700 ${fontPx}px system-ui, -apple-system, sans-serif`
-    const textW   = ctx.measureText(labelText).width
+    const canvas  = document.createElement('canvas')
     canvas.width  = Math.ceil(textW) + padX * 2
     canvas.height = fontPx + padY * 2
+    const ctx     = canvas.getContext('2d')!
 
+    // Background chip
     ctx.fillStyle   = hexColor
     ctx.globalAlpha = 0.88
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.globalAlpha = 1
 
-    ctx.font         = `700 ${fontPx}px system-ui, -apple-system, sans-serif`
+    // White label text
+    ctx.globalAlpha  = 1
+    ctx.font         = font
     ctx.fillStyle    = '#ffffff'
     ctx.textBaseline = 'middle'
-    ctx.shadowColor  = 'rgba(0,0,0,0.7)'
-    ctx.shadowBlur   = 3 * DPR
+    ctx.shadowColor  = 'rgba(0,0,0,0.6)'
+    ctx.shadowBlur   = 4 * DPR
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 1 * DPR
     ctx.fillText(labelText, padX, canvas.height / 2)
 
     const texture = new THREE.CanvasTexture(canvas)
