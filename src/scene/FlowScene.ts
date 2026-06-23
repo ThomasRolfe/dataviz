@@ -1,7 +1,4 @@
 import * as THREE from 'three'
-import { Tween, Easing } from '@tweenjs/tween.js'
-import type { Tween as TweenType } from '@tweenjs/tween.js'
-import { tweenGroup } from '@/scene/tweenGroup'
 import { SceneManager } from '@/scene/SceneManager'
 import { OverlayBridge } from '@/scene/OverlayBridge'
 import { GridFloor } from '@/scene/GridFloor'
@@ -21,10 +18,9 @@ import type { InternalGraph } from '@/types/internal'
 import type { Step } from '@/types/schema'
 import { CELL_SIZE } from '@/engine/layoutEngine'
 
-const PACKET_TRAVEL_MS    = 2000
-const CAMERA_HEIGHT       = 50
+const PACKET_TRAVEL_MS     = 2000
+const CAMERA_HEIGHT        = 50
 const PHASE_MATERIAL_RATIO = 0.4
-const PHASE_CAMERA_RATIO   = 0.3
 const WHEEL_ZOOM_IN        = 0.89
 const WHEEL_ZOOM_OUT       = 1.12
 const FRUSTUM_MIN_RATIO    = 0.25
@@ -50,8 +46,6 @@ export class FlowScene extends SceneManager {
   private overviewFrustum: number
   private isPanning:       boolean = false
   private panLast:         THREE.Vector2 = new THREE.Vector2()
-  private cameraTween:     TweenType<{ tx: number; tz: number; f: number }> | null = null
-  private pendingCamera:   { target: THREE.Vector3; frustum: number; durationMs: number } | null = null
   private packetArrivalCallback: ((targetId: string) => void) | null = null
   cameraTarget:   THREE.Vector3
   currentFrustum: number
@@ -151,8 +145,6 @@ export class FlowScene extends SceneManager {
     if (e.button !== 0) return
     this.isPanning = true
     this.panLast.set(e.clientX, e.clientY)
-    this.cameraTween?.stop()
-    this.cameraTween = null
     this.renderer.domElement.style.cursor = 'grabbing'
   }
 
@@ -186,12 +178,6 @@ export class FlowScene extends SceneManager {
   private onPointerUp = (): void => {
     this.isPanning = false
     this.renderer.domElement.style.cursor = 'grab'
-    // Apply any camera animation that was requested while the user was panning
-    if (this.pendingCamera) {
-      const { target, frustum, durationMs } = this.pendingCamera
-      this.pendingCamera = null
-      this.tweenCameraTo(target, frustum, durationMs)
-    }
   }
 
   private onContextMenu = (e: Event): void => {
@@ -217,7 +203,6 @@ export class FlowScene extends SceneManager {
 
   applyStep(step: Step, _prevStep: Step | null, durationMs: number): void {
     const phaseMaterial = durationMs * PHASE_MATERIAL_RATIO
-    const phaseCamera   = durationMs * PHASE_CAMERA_RATIO
 
     // 1. Dispose all active packets, clear traversal state, clear penetration
     for (const [, pipeId] of this.packetPipeMap) {
@@ -255,10 +240,7 @@ export class FlowScene extends SceneManager {
       pipe.setActive(active, phaseMaterial)
     }
 
-    // 4. Animate camera
-    this.animateCamera(step.camera, phaseCamera)
-
-    // 5. Launch all packets — each pipe flares to full brightness while a packet is on it
+    // 4. Launch all packets — each pipe flares to full brightness while a packet is on it
     const packetDefs = [
       ...(step.packet  ? [step.packet]    : []),
       ...(step.packets ?? []),
@@ -296,64 +278,6 @@ export class FlowScene extends SceneManager {
         : THEME_COLORS[this.currentTheme].packetColor
       this.activeStreams.push(new ChevronStream(this.scene, pipe.curve, color))
     }
-  }
-
-  private animateCamera(config: Step['camera'], durationMs: number): void {
-    if (!config || config.focus === undefined) {
-      this.tweenCameraToOverview(durationMs)
-      return
-    }
-
-    if (config.focus === null) {
-      this.tweenCameraToOverview(durationMs)
-      return
-    }
-
-    const component = this.graph.components.get(config.focus)
-    if (!component) return
-
-    const zoom   = config.zoom ?? 1.0
-    const target = component.center.clone()
-
-    this.tweenCameraTo(target, this.overviewFrustum / zoom, durationMs)
-  }
-
-  private tweenCameraToOverview(durationMs: number): void {
-    this.tweenCameraTo(this.overviewTarget, this.overviewFrustum, durationMs)
-  }
-
-  private tweenCameraTo(target: THREE.Vector3, frustum: number, durationMs: number): void {
-    // Don't interrupt while the user is panning — queue it for when they lift
-    if (this.isPanning) {
-      this.pendingCamera = { target: target.clone(), frustum, durationMs }
-      return
-    }
-    this.pendingCamera = null
-    this.cameraTween?.stop()
-    const aspect = this.renderer.domElement.clientWidth / this.renderer.domElement.clientHeight || 1
-
-    this.cameraTween = new Tween({
-      tx: this.cameraTarget.x,
-      tz: this.cameraTarget.z,
-      f:  this.currentFrustum,
-    }, tweenGroup)
-      .to({ tx: target.x, tz: target.z, f: frustum }, durationMs)
-      .easing(Easing.Cubic.InOut)
-      .onUpdate(({ tx, tz, f }) => {
-        this.cameraTarget.set(tx, 0, tz)
-        this.currentFrustum = f
-
-        this.camera.position.set(tx + CAMERA_HEIGHT, CAMERA_HEIGHT, tz + CAMERA_HEIGHT)
-        this.camera.lookAt(this.cameraTarget)
-
-        this.camera.left   = -f * aspect
-        this.camera.right  =  f * aspect
-        this.camera.top    =  f
-        this.camera.bottom = -f
-        this.camera.updateProjectionMatrix()
-      })
-      .onComplete(() => { this.cameraTween = null })
-      .start()
   }
 
   override resize(width: number, height: number): void {
