@@ -48,7 +48,7 @@ function App() {
   const engineRef = useRef<StepEngine | null>(null)
 
   useEffect(() => {
-    loadFlow('ecommerce-platform')
+    loadFlow('php-fpm-otel')
       .then((def) => {
         const g = buildGraph(def)
         setGraph(g)
@@ -174,9 +174,12 @@ function App() {
           hoveredId={hoveredId}
         />
       )}
-      {hoveredId && !hoveredId.startsWith('__packet__') && !hoveredId.startsWith('__zone__') && bridge && (
-        <HoverTooltip hoveredId={hoveredId} graph={graph} bridge={bridge} />
-      )}
+      {hoveredId &&
+        !hoveredId.startsWith('__packet__') &&
+        !hoveredId.startsWith('__zone__') &&
+        bridge && (
+          <HoverTooltip hoveredId={hoveredId} graph={graph} bridge={bridge} />
+        )}
       {hoveredId?.startsWith('__zone__') && sceneRef.current && bridge && (
         <ZoneTooltip
           zoneId={hoveredId.slice('__zone__'.length)}

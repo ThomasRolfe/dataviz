@@ -182,17 +182,83 @@
     }
   ],
   "connections": [
-    { "id": "c_nginx_fpm1",  "from": "nginx",         "to": "fpm1",         "label": "FastCGI",         "route": "auto" },
-    { "id": "c_nginx_fpm2",  "from": "nginx",         "to": "fpm2",         "label": "FastCGI",         "route": "auto" },
-    { "id": "c_fpm1_auth",   "from": "fpm1",          "to": "span_auth",    "label": "startSpan()",     "route": "auto" },
-    { "id": "c_fpm1_db",     "from": "fpm1",          "to": "span_db",      "label": "startSpan()",     "route": "auto" },
-    { "id": "c_fpm1_render", "from": "fpm1",          "to": "span_render",  "label": "startSpan()",     "route": "auto" },
-    { "id": "c_fpm2_cache",  "from": "fpm2",          "to": "span_cache",   "label": "startSpan()",     "route": "auto" },
-    { "id": "c_fpm2_http",   "from": "fpm2",          "to": "span_http",    "label": "startSpan()",     "route": "auto" },
-    { "id": "c_fpm1_agent",  "from": "fpm1",          "to": "otel_agent",   "label": "OTLP/gRPC :4317", "route": "auto" },
-    { "id": "c_fpm2_agent",  "from": "fpm2",          "to": "otel_agent",   "label": "OTLP/gRPC :4317", "route": "auto" },
-    { "id": "c_agent_gw",    "from": "otel_agent",    "to": "otel_gateway", "label": "OTLP",            "route": "auto" },
-    { "id": "c_gw_obs",      "from": "otel_gateway",  "to": "obs_platform", "label": "OTLP/HTTP",       "route": "auto" }
+    {
+      "id": "c_nginx_fpm1",
+      "from": "nginx",
+      "to": "fpm1",
+      "label": "FastCGI",
+      "route": "auto"
+    },
+    {
+      "id": "c_nginx_fpm2",
+      "from": "nginx",
+      "to": "fpm2",
+      "label": "FastCGI",
+      "route": "auto"
+    },
+    {
+      "id": "c_fpm1_auth",
+      "from": "fpm1",
+      "to": "span_auth",
+      "label": "startSpan()",
+      "route": "auto"
+    },
+    {
+      "id": "c_fpm1_db",
+      "from": "fpm1",
+      "to": "span_db",
+      "label": "startSpan()",
+      "route": "auto"
+    },
+    {
+      "id": "c_fpm1_render",
+      "from": "fpm1",
+      "to": "span_render",
+      "label": "startSpan()",
+      "route": "auto"
+    },
+    {
+      "id": "c_fpm2_cache",
+      "from": "fpm2",
+      "to": "span_cache",
+      "label": "startSpan()",
+      "route": "auto"
+    },
+    {
+      "id": "c_fpm2_http",
+      "from": "fpm2",
+      "to": "span_http",
+      "label": "startSpan()",
+      "route": "auto"
+    },
+    {
+      "id": "c_fpm1_agent",
+      "from": "fpm1",
+      "to": "otel_agent",
+      "label": "OTLP/gRPC :4317",
+      "route": "auto"
+    },
+    {
+      "id": "c_fpm2_agent",
+      "from": "fpm2",
+      "to": "otel_agent",
+      "label": "OTLP/gRPC :4317",
+      "route": "auto"
+    },
+    {
+      "id": "c_agent_gw",
+      "from": "otel_agent",
+      "to": "otel_gateway",
+      "label": "OTLP",
+      "route": "auto"
+    },
+    {
+      "id": "c_gw_obs",
+      "from": "otel_gateway",
+      "to": "obs_platform",
+      "label": "OTLP/HTTP",
+      "route": "auto"
+    }
   ],
   "steps": [
     {
@@ -238,7 +304,7 @@
       ],
       "packet": {
         "connection": "c_nginx_fpm1",
-        "shape": "document",
+        "shape": "sphere",
         "arrivalStyle": "success",
         "data": {
           "method": "GET",
@@ -366,14 +432,19 @@
       ],
       "packet": {
         "connection": "c_fpm1_agent",
-        "shape": "document",
+        "shape": "sphere",
         "arrivalStyle": "success",
         "data": {
           "spans_exported": 3,
           "protocol": "OTLP/gRPC",
           "endpoint": "http://otel-agent:4317",
           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
-          "span_names": ["GET /api/users/{id}", "auth.check", "db.query", "template.render"]
+          "span_names": [
+            "GET /api/users/{id}",
+            "auth.check",
+            "db.query",
+            "template.render"
+          ]
         }
       }
     },
@@ -405,7 +476,7 @@
       "packets": [
         {
           "connection": "c_nginx_fpm2",
-          "shape": "document",
+          "shape": "sphere",
           "arrivalStyle": "success",
           "data": {
             "method": "POST",
@@ -454,7 +525,7 @@
       ],
       "packet": {
         "connection": "c_fpm2_agent",
-        "shape": "document",
+        "shape": "sphere",
         "arrivalStyle": "success",
         "data": {
           "spans_exported": 3,
@@ -474,7 +545,7 @@
       "camera": { "focus": null },
       "packet": {
         "connection": "c_agent_gw",
-        "shape": "document",
+        "shape": "sphere",
         "data": {
           "protocol": "OTLP/gRPC",
           "traces": 2,
@@ -521,7 +592,7 @@
       ],
       "packet": {
         "connection": "c_gw_obs",
-        "shape": "document",
+        "shape": "sphere",
         "arrivalStyle": "success",
         "data": {
           "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
